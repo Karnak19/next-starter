@@ -1,0 +1,105 @@
+# No Extra Documentation Files
+
+## Rule: Do Not Create Unnecessary Documentation Files
+
+**NEVER** create the following documentation files unless explicitly requested by the user:
+
+- `README.md` (except at project root if it doesn't exist)
+- `SUMMARY.md`
+- `VALIDATION.md`
+- `NOTES.md`
+- `TODO.md`
+- `CHANGELOG.md` (unless maintaining an existing one)
+- `CONTRIBUTING.md`
+- `ARCHITECTURE.md`
+- Any other meta-documentation files
+
+## Why This Rule Exists
+
+Creating extra documentation files:
+
+- Clutters the codebase with redundant information
+- Creates maintenance burden (files get out of sync)
+- Distracts from actual implementation work
+- Often duplicates information already in code or existing docs
+
+## What You SHOULD Do Instead
+
+### For OpenSpec Proposals
+
+Only create these required files:
+
+- `proposal.md` - The proposal document
+- `tasks.md` - Implementation checklist
+- `design.md` - Only when architectural decisions need discussion
+- `specs/<capability>/spec.md` - The specification deltas
+
+### For Features
+
+- Write clear code comments and JSDoc
+- Update existing documentation if it exists
+- Create documentation only when explicitly asked
+
+### For Project Documentation
+
+- Only update existing documentation files
+- Do not create new top-level docs without explicit request
+- Prefer in-code documentation over separate files
+
+## Exceptions
+
+You MAY create documentation files when:
+
+1. **User explicitly asks**: "Create a README for this feature"
+2. **Convention requires it**: Package needs a README.md for npm
+3. **Updating existing file**: File already exists and needs updates
+4. **Standard project structure**: Creating initial project structure
+
+## Examples
+
+❌ **BAD** - Creating unsolicited docs:
+
+```
+Created files:
+- feature.ts
+- feature.test.ts
+- README.md          ← NEVER do this without being asked
+- IMPLEMENTATION.md  ← NEVER do this without being asked
+```
+
+✅ **GOOD** - Only creating requested files:
+
+```
+Created files:
+- feature.ts
+- feature.test.ts
+```
+
+❌ **BAD** - Creating summary docs for OpenSpec:
+
+```
+openspec/changes/my-feature/
+├── proposal.md
+├── tasks.md
+├── specs/feature/spec.md
+├── README.md        ← NEVER create this
+└── SUMMARY.md       ← NEVER create this
+```
+
+✅ **GOOD** - Only OpenSpec required files:
+
+```
+openspec/changes/my-feature/
+├── proposal.md
+├── tasks.md
+├── design.md (only if needed)
+└── specs/feature/spec.md
+```
+
+## Summary
+
+**Default behavior**: Do NOT create documentation files.
+
+**Only create docs when**: User explicitly requests them.
+
+**Keep it simple**: Code + comments + existing docs is usually enough.

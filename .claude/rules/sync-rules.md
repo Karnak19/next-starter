@@ -1,0 +1,33 @@
+---
+paths: .cursor/rules/**, .claude/rules/**
+---
+
+# Rule Synchronization
+
+**CRITICAL**: Every rule change or creation MUST be applied to BOTH directories:
+
+- `.cursor/rules/` (Cursor IDE rules, `.mdc` extension)
+- `.claude/rules/` (Claude Code rules, `.md` extension)
+
+## When Creating a New Rule
+
+1. Create the rule in `.cursor/rules/<rule-name>.mdc`
+2. Create the same rule in `.claude/rules/<rule-name>.md`
+3. Content should be identical (only the frontmatter format differs slightly)
+
+## When Modifying an Existing Rule
+
+1. Apply the change to `.cursor/rules/<rule-name>.mdc`
+2. Apply the same change to `.claude/rules/<rule-name>.md`
+
+## When Deleting a Rule
+
+1. Delete from `.cursor/rules/`
+2. Delete from `.claude/rules/`
+
+## File Format Differences
+
+- **Cursor**: Uses `.mdc` extension with YAML frontmatter (`name`, `description`, `globs`, `alwaysApply`)
+- **Claude**: Uses `.md` extension with similar frontmatter structure
+
+The rule content after the frontmatter should be identical in both files.
