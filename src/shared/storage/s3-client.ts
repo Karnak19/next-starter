@@ -1,33 +1,114 @@
-import {
-	DeleteObjectCommand,
-	GetObjectCommand,
-	ListObjectsV2Command,
-	PutObjectCommand,
-	S3Client,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-
-// S3-compatible storage client for MinIO
-const s3Client = new S3Client({
+// Bun's built-in S3 client configuration
+const s3Config = {
 	endpoint: process.env.S3_ENDPOINT || "http://localhost:9000",
-	region: process.env.S3_REGION || "us-east-1", // MinIO doesn't care about region, but SDK requires it
-	credentials: {
-		accessKeyId: process.env.S3_ACCESS_KEY_ID || "minioadmin",
-		secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "minioadmin",
-	},
-	forcePathStyle: true, // Required for MinIO
-});
+	accessKeyId: process.env.S3_ACCESS_KEY_ID || "minioadmin",
+	secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "minioadmin",
+	region: process.env.S3_REGION || "us-east-1",
+};
 
 const defaultBucket = process.env.S3_BUCKET || "uploads";
+
+/**
+ * Create a presigned URL for S3 operations
+ */
+async function createPresignedUrl(
+	method: string,
+	bucket: string,
+	key: string,
+	expiresIn = 3600,
+): Promise<string> {
+	const url = new URL(`${s3Config.endpoint}/${bucket}/${key}`);
+	const date = new Date();
+	const timestamp = date.toISOString().replace(/[:-]|\.\d{3}/g, "");
+	const dateStamp = timestamp.slice(0, 8);
+
+	// AWS Signature Version 4
+	const credential = `${s3Config.accessKeyId}/${dateStamp}/${s3Config.region}/s3/aws4_request`;
+
+	url.searchParams.set("X-Amz-Algorithm", "AWS4-HMAC-SHA256");
+	url.searchParams.set("X-Amz-Credential", credential);
+	url.searchParams.set("X-Amz-Date", timestamp);
+	url.searchParams.set("X-Amz-Expires", expiresIn.toString());
+	url.searchParams.set("X-Amz-SignedHeaders", "host");
+
+	// Create signature
+	const canonicalRequest = `${method}\n/${bucket}/${key}\n${url.searchParams.toString()}\nhost:${url.host}\n\nhost\nUNSIGNED-PAYLOAD`;
+
+	const stringToSign = `AWS4-HMAC-SHA256\n${timestamp}\n${dateStamp}/${s3Config.region}/s3/aws4_request\n${await hash(canonicalRequest)}`;
+
+	const signingKey = await getSignatureKey(
+		s3Config.secretAccessKey,
+		dateStamp,
+		s3Config.region,
+		"s3",
+	);
+	const signature = await hmac(signingKey, stringToSign);
+
+	url.searchParams.set("X-Amz-Signature", signature);
+	return url.toString();
+}
+
+async function hash(data: string): Promise<string> {
+	const hasher = new Bun.CryptoHasher("sha256");
+	hasher.update(data);
+	return hasher.digest("hex");
+}
+
+async function hmac(key: ArrayBuffer | string, data: string): Promise<string> {
+	const keyBuffer =
+		typeof key === "string" ? new TextEncoder().encode(key) : key;
+	const dataBuffer = new TextEncoder().encode(data);
+
+	const cryptoKey = await crypto.subtle.importKey(
+		"raw",
+		keyBuffer,
+		{ name: "HMAC", hash: "SHA-256" },
+		false,
+		["sign"],
+	);
+
+	const signature = await crypto.subtle.sign("HMAC", cryptoKey, dataBuffer);
+	return Array.from(new Uint8Array(signature))
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
+}
+
+async function getSignatureKey(
+	key: string,
+	dateStamp: string,
+	regionName: string,
+	serviceName: string,
+): Promise<ArrayBuffer> {
+	const kDate = await hmacBuffer(`AWS4${key}`, dateStamp);
+	const kRegion = await hmacBuffer(kDate, regionName);
+	const kService = await hmacBuffer(kRegion, serviceName);
+	const kSigning = await hmacBuffer(kService, "aws4_request");
+	return kSigning;
+}
+
+async function hmacBuffer(
+	key: ArrayBuffer | string,
+	data: string,
+): Promise<ArrayBuffer> {
+	const keyBuffer =
+		typeof key === "string" ? new TextEncoder().encode(key) : key;
+	const dataBuffer = new TextEncoder().encode(data);
+
+	const cryptoKey = await crypto.subtle.importKey(
+		"raw",
+		keyBuffer,
+		{ name: "HMAC", hash: "SHA-256" },
+		false,
+		["sign"],
+	);
+
+	return await crypto.subtle.sign("HMAC", cryptoKey, dataBuffer);
+}
 
 // Helper functions for common storage operations
 export const storage = {
 	/**
 	 * Upload a file to S3/MinIO
-	 * @param bucket - The bucket name (optional, uses default if not provided)
-	 * @param key - The file path/key
-	 * @param file - The file to upload (File, Blob, or Buffer)
-	 * @param options - Additional upload options
 	 */
 	async uploadFile(
 		bucketOrKey: string,
@@ -42,18 +123,15 @@ export const storage = {
 		let contentType: string | undefined;
 
 		if (keyOrFile === undefined) {
-			// Single param: uploadFile(key)
 			throw new Error("File is required");
 		}
 
 		if (typeof keyOrFile === "string") {
-			// Three params: uploadFile(bucket, key, file, options?)
 			bucket = bucketOrKey;
 			key = keyOrFile;
 			file = fileOrOptions as File | Blob | Buffer;
 			contentType = options?.contentType;
 		} else {
-			// Two params: uploadFile(key, file)
 			bucket = defaultBucket;
 			key = bucketOrKey;
 			file = keyOrFile;
@@ -63,43 +141,42 @@ export const storage = {
 					: undefined;
 		}
 
-		// Convert File/Blob to Buffer for Node.js environments
+		const url = `${s3Config.endpoint}/${bucket}/${key}`;
 		const body =
-			file instanceof Blob ? Buffer.from(await file.arrayBuffer()) : file;
+			file instanceof Blob ? await file.arrayBuffer() : Buffer.from(file);
 
-		const command = new PutObjectCommand({
-			Bucket: bucket,
-			Key: key,
-			Body: body,
-			ContentType: contentType || (file instanceof File ? file.type : undefined),
+		const response = await fetch(url, {
+			method: "PUT",
+			headers: {
+				"Content-Type":
+					contentType || (file instanceof File ? file.type : "application/octet-stream"),
+				"x-amz-acl": "public-read",
+			},
+			body,
 		});
 
-		const result = await s3Client.send(command);
+		if (!response.ok) {
+			throw new Error(`Upload failed: ${response.statusText}`);
+		}
+
 		return {
 			key,
 			bucket,
-			etag: result.ETag,
+			etag: response.headers.get("etag"),
 		};
 	},
 
 	/**
 	 * Get a public URL for a file
-	 * Note: In MinIO, bucket must be public for this to work
-	 * @param bucket - The bucket name (optional)
-	 * @param key - The file key
 	 */
 	getPublicUrl(bucketOrKey: string, key?: string) {
 		const bucket = key ? bucketOrKey : defaultBucket;
 		const actualKey = key || bucketOrKey;
-		const endpoint = process.env.S3_ENDPOINT || "http://localhost:9000";
-		return `${endpoint}/${bucket}/${actualKey}`;
+		return `${s3Config.endpoint}/${bucket}/${actualKey}`;
 	},
 
 	/**
 	 * Create a signed URL for private file access
-	 * @param bucket - The bucket name (optional)
-	 * @param key - The file key
-	 * @param expiresIn - Expiration time in seconds (default: 3600)
 	 */
 	async createSignedUrl(
 		bucketOrKey: string,
@@ -113,22 +190,12 @@ export const storage = {
 		const expires =
 			typeof keyOrExpires === "number" ? keyOrExpires : expiresIn;
 
-		const command = new GetObjectCommand({
-			Bucket: bucket,
-			Key: key,
-		});
-
-		const signedUrl = await getSignedUrl(s3Client, command, {
-			expiresIn: expires,
-		});
-
+		const signedUrl = await createPresignedUrl("GET", bucket, key, expires);
 		return { signedUrl };
 	},
 
 	/**
 	 * Delete a file from storage
-	 * @param bucket - The bucket name (optional)
-	 * @param keys - Single key or array of keys to delete
 	 */
 	async deleteFile(
 		bucketOrKeys: string,
@@ -139,22 +206,19 @@ export const storage = {
 		const keysArray = Array.isArray(actualKeys) ? actualKeys : [actualKeys];
 
 		await Promise.all(
-			keysArray.map((key) =>
-				s3Client.send(
-					new DeleteObjectCommand({
-						Bucket: bucket,
-						Key: key,
-					}),
-				),
-			),
+			keysArray.map(async (key) => {
+				const url = `${s3Config.endpoint}/${bucket}/${key}`;
+				const response = await fetch(url, { method: "DELETE" });
+
+				if (!response.ok && response.status !== 404) {
+					throw new Error(`Delete failed: ${response.statusText}`);
+				}
+			}),
 		);
 	},
 
 	/**
 	 * List files in a bucket
-	 * @param bucket - The bucket name (optional)
-	 * @param prefix - The prefix/folder path (optional)
-	 * @param options - Additional list options
 	 */
 	async listFiles(
 		bucketOrPrefix?: string,
@@ -171,67 +235,76 @@ export const storage = {
 		if (!bucketOrPrefix) {
 			bucket = defaultBucket;
 		} else if (typeof prefixOrOptions === "string") {
-			// listFiles(bucket, prefix, options)
 			bucket = bucketOrPrefix;
 			prefix = prefixOrOptions;
 			maxKeys = options?.maxKeys;
 			continuationToken = options?.continuationToken;
 		} else if (typeof prefixOrOptions === "object") {
-			// listFiles(bucket, options)
 			bucket = bucketOrPrefix;
 			maxKeys = prefixOrOptions?.maxKeys;
 			continuationToken = prefixOrOptions?.continuationToken;
 		} else {
-			// listFiles(prefix)
 			bucket = defaultBucket;
 			prefix = bucketOrPrefix;
 		}
 
-		const command = new ListObjectsV2Command({
-			Bucket: bucket,
-			Prefix: prefix,
-			MaxKeys: maxKeys,
-			ContinuationToken: continuationToken,
-		});
+		const url = new URL(`${s3Config.endpoint}/${bucket}/`);
+		url.searchParams.set("list-type", "2");
+		if (prefix) url.searchParams.set("prefix", prefix);
+		if (maxKeys) url.searchParams.set("max-keys", maxKeys.toString());
+		if (continuationToken)
+			url.searchParams.set("continuation-token", continuationToken);
 
-		const result = await s3Client.send(command);
+		const response = await fetch(url.toString());
+
+		if (!response.ok) {
+			throw new Error(`List failed: ${response.statusText}`);
+		}
+
+		const text = await response.text();
+		const parser = new DOMParser();
+		const xml = parser.parseFromString(text, "text/xml");
+
+		const files = Array.from(xml.querySelectorAll("Contents")).map(
+			(content) => ({
+				Key: content.querySelector("Key")?.textContent || "",
+				LastModified: content.querySelector("LastModified")?.textContent || "",
+				Size: Number.parseInt(
+					content.querySelector("Size")?.textContent || "0",
+					10,
+				),
+				ETag: content.querySelector("ETag")?.textContent || "",
+			}),
+		);
+
+		const nextToken =
+			xml.querySelector("NextContinuationToken")?.textContent || undefined;
+		const isTruncated =
+			xml.querySelector("IsTruncated")?.textContent === "true";
+
 		return {
-			files: result.Contents || [],
-			nextToken: result.NextContinuationToken,
-			isTruncated: result.IsTruncated,
+			files,
+			nextToken,
+			isTruncated,
 		};
 	},
 
 	/**
 	 * Download a file from storage
-	 * @param bucket - The bucket name (optional)
-	 * @param key - The file key
 	 */
 	async downloadFile(bucketOrKey: string, key?: string) {
 		const bucket = key ? bucketOrKey : defaultBucket;
 		const actualKey = key || bucketOrKey;
+		const url = `${s3Config.endpoint}/${bucket}/${actualKey}`;
 
-		const command = new GetObjectCommand({
-			Bucket: bucket,
-			Key: actualKey,
-		});
+		const response = await fetch(url);
 
-		const result = await s3Client.send(command);
-
-		// Convert stream to blob
-		if (!result.Body) {
-			throw new Error("No body in response");
+		if (!response.ok) {
+			throw new Error(`Download failed: ${response.statusText}`);
 		}
 
-		const chunks: Uint8Array[] = [];
-		for await (const chunk of result.Body as any) {
-			chunks.push(chunk);
-		}
-
-		return new Blob(chunks, {
-			type: result.ContentType,
-		});
+		return await response.blob();
 	},
 };
 
-export { s3Client };
+export { s3Config };

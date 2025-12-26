@@ -1,1 +1,1 @@
-export { s3Client, storage } from "./s3-client";
+export { s3Config, storage } from "./s3-client";

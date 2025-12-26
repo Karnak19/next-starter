@@ -28,9 +28,6 @@ A production-ready Next.js starter with Feature-Sliced Design architecture.
 1. **Install dependencies**
    ```bash
    bun install
-
-   # Install AWS SDK for S3 storage (if not already in package.json)
-   bun add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
    ```
 
 2. **Start database and storage**
@@ -140,11 +137,11 @@ For production with AWS S3 or other providers, update the S3 settings accordingl
 - **Auth ready**: Email/password auth with Better Auth
 - **Streaming**: React Suspense with server components
 - **Fast DB**: Bun's native SQL driver with Drizzle ORM
-- **File storage**: S3-compatible storage (MinIO) with helper functions for uploads, downloads, and signed URLs
+- **File storage**: S3-compatible storage (MinIO) using Bun's built-in crypto for AWS signature v4
 
 ## Using Object Storage
 
-The storage client is available at `src/shared/storage/`. It works with MinIO locally and any S3-compatible service in production.
+The storage client is available at `src/shared/storage/`. It uses Bun's native APIs (fetch + crypto) to work with MinIO locally and any S3-compatible service in production. No external dependencies needed.
 
 **Example usage:**
 
