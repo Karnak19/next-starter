@@ -1,10 +1,10 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { healthQueryOptions } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useApiQuery } from "@/shared/api/use-api";
 
 export function HealthStatus() {
-  const { data, isLoading, error } = useQuery(healthQueryOptions);
+  const { data, isLoading, error } = useApiQuery(["health"], api.health.get);
 
   if (isLoading) {
     return (

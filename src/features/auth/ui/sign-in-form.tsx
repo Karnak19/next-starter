@@ -1,10 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { signIn } from "@/shared/auth/client";
 import {
   Button,
   Form,
@@ -15,12 +12,11 @@ import {
   FormMessage,
   Input,
 } from "@/shared/ui";
+import { useSignIn } from "../hooks/use-sign-in";
 import { type SignInFormData, signInSchema } from "../model/schemas";
 
 export function SignInForm() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { signIn: signInAction, isLoading, error } = useSignIn();
 
   const form = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
@@ -31,22 +27,7 @@ export function SignInForm() {
   });
 
   async function onSubmit(data: SignInFormData) {
-    setIsLoading(true);
-    setError(null);
-
-    const result = await signIn.email({
-      email: data.email,
-      password: data.password,
-    });
-
-    if (result.error) {
-      setError(result.error.message ?? "Something went wrong");
-      setIsLoading(false);
-      return;
-    }
-
-    router.push("/");
-    router.refresh();
+    await signInAction(data);
   }
 
   return (

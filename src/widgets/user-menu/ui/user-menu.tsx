@@ -1,14 +1,14 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { meQueryOptions } from "@/shared/api";
+import { api } from "@/shared/api";
+import { useApi, useApiQuery } from "@/shared/api/use-api";
 import { signOut } from "@/shared/auth/client";
 import { Button } from "@/shared/ui";
 
 export function UserMenu() {
-  const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery(meQueryOptions);
+  const { data, isLoading } = useApiQuery(["me"], api.me.get);
+  const { invalidate } = useApi();
 
   if (isLoading) {
     return (
@@ -31,7 +31,7 @@ export function UserMenu() {
 
   const handleSignOut = async () => {
     await signOut();
-    queryClient.invalidateQueries({ queryKey: ["me"] });
+    invalidate(["me"]);
   };
 
   return (

@@ -40,7 +40,8 @@ export function HomePage() {
             </h1>
             <p className="text-lg text-zinc-600 leading-relaxed dark:text-zinc-400">
               A production-ready starter with Feature-Sliced Design, Elysia.js
-              API, Better Auth, Drizzle ORM, and TanStack Query.
+              API, Better Auth, Drizzle ORM, Supabase Storage, and TanStack
+              Query.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild>
@@ -90,31 +91,43 @@ export function HomePage() {
             <StackCard
               description="App Router, React 19, Turbopack"
               href="https://nextjs.org/docs"
+              logo="https://nextjs.org/favicon.ico"
               title="Next.js 16"
             />
             <StackCard
               description="Type-safe API with Eden Treaty"
               href="https://elysiajs.com/"
+              logo="https://elysiajs.com/assets/elysia.svg"
               title="Elysia.js"
             />
             <StackCard
               description="PostgreSQL with Bun SQL driver"
               href="https://orm.drizzle.team/"
+              logo="https://orm.drizzle.team/favicon.ico"
               title="Drizzle ORM"
+            />
+            <StackCard
+              description="Self-hosted storage with file operations"
+              href="https://supabase.com/storage"
+              logo="https://supabase.com/favicon/favicon-196x196.png"
+              title="Supabase Storage"
             />
             <StackCard
               description="Email/password, sessions, OAuth ready"
               href="https://www.better-auth.com/"
+              logo="https://www.better-auth.com/logo.png"
               title="Better Auth"
             />
             <StackCard
               description="Server state with query options"
               href="https://tanstack.com/query"
+              logo="https://tanstack.com/images/logos/logo-color-banner-600.png"
               title="TanStack Query"
             />
             <StackCard
               description="Layered architecture for scalability"
               href="https://feature-sliced.design/"
+              logo="https://feature-sliced.design/img/brand/logo-primary.png"
               title="Feature-Sliced Design"
             />
           </div>
@@ -141,27 +154,39 @@ function StackCard({
   title,
   description,
   href,
+  logo,
 }: {
   title: string;
   description: string;
   href: string;
+  logo: string;
 }) {
   return (
     <a
-      className="group rounded-lg border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50"
+      className="group flex items-start gap-4 rounded-lg border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50"
       href={href}
       rel="noopener noreferrer"
       target="_blank"
     >
-      <h3 className="font-medium text-zinc-900 group-hover:text-zinc-700 dark:text-zinc-100 dark:group-hover:text-zinc-50">
-        {title}
-        <span className="ml-1 inline-block transition-transform group-hover:translate-x-0.5">
-          →
-        </span>
-      </h3>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        {description}
-      </p>
+      {/** biome-ignore lint/performance/noImgElement: this is temporary component */}
+      <img
+        alt={`${title} logo`}
+        className="size-10 shrink-0"
+        height={40}
+        src={logo}
+        width={40}
+      />
+      <div className="min-w-0 flex-1">
+        <h3 className="font-medium text-zinc-900 group-hover:text-zinc-700 dark:text-zinc-100 dark:group-hover:text-zinc-50">
+          {title}
+          <span className="ml-1 inline-block transition-transform group-hover:translate-x-0.5">
+            →
+          </span>
+        </h3>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          {description}
+        </p>
+      </div>
     </a>
   );
 }
