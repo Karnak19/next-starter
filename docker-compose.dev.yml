@@ -1,10 +1,49 @@
-# This file is no longer needed as the project now uses Supabase for Postgres and Storage.
+# Self-hosted Supabase Development Setup
 #
-# To set up your development environment:
-# 1. Create a Supabase project at https://supabase.com
-# 2. Copy .env.local.example to .env.local
-# 3. Fill in your Supabase credentials
-# 4. Run: bun db:push to sync your schema with Supabase
+# This project uses Supabase CLI for local development, which manages its own Docker containers.
+# The Supabase CLI provides a complete local stack including:
+# - PostgreSQL database
+# - PostgREST API server
+# - GoTrue auth server
+# - Storage API
+# - Realtime server
+# - Dashboard UI
 #
-# If you need a local development database, consider using Supabase CLI:
-# https://supabase.com/docs/guides/cli/local-development
+# Setup Instructions:
+# 1. Install Supabase CLI: https://supabase.com/docs/guides/cli/getting-started
+#    npm install -g supabase
+#    # or
+#    brew install supabase/tap/supabase
+#
+# 2. Initialize Supabase in this project:
+#    supabase init
+#
+# 3. Start the local Supabase stack:
+#    supabase start
+#
+# 4. The command will output your local credentials. Copy them to .env.local
+#
+# 5. Stop Supabase when done:
+#    supabase stop
+#
+# Access the local Supabase Studio at: http://localhost:54323
+#
+# Note: If you prefer a simpler setup with just PostgreSQL, you can use this instead:
+
+services:
+  # Simple PostgreSQL-only setup (alternative to full Supabase stack)
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: devdb
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: devpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Uncomment to start PostgreSQL only (for projects not using Supabase Storage)
+    # profiles: ["postgres-only"]
+
+volumes:
+  postgres_data:

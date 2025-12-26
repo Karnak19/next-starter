@@ -7,8 +7,8 @@ A production-ready Next.js starter with Feature-Sliced Design architecture.
 - **Runtime**: [Bun](https://bun.sh/)
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router, React 19, Turbopack)
 - **API**: [Elysia.js](https://elysiajs.com/) + [Eden Treaty](https://elysiajs.com/eden/overview.html)
-- **Database**: [Drizzle ORM](https://orm.drizzle.team/) + [Supabase](https://supabase.com/) (PostgreSQL + Bun SQL driver)
-- **Storage**: [Supabase Storage](https://supabase.com/docs/guides/storage)
+- **Database**: [Drizzle ORM](https://orm.drizzle.team/) + [Supabase](https://supabase.com/) (Self-hosted PostgreSQL + Bun SQL driver)
+- **Storage**: [Supabase Storage](https://supabase.com/docs/guides/storage) (Self-hosted)
 - **Auth**: [Better Auth](https://www.better-auth.com/)
 - **State**: [TanStack Query](https://tanstack.com/query)
 - **UI**: [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
@@ -21,20 +21,34 @@ A production-ready Next.js starter with Feature-Sliced Design architecture.
 ### Prerequisites
 
 - [Bun](https://bun.sh/) installed
-- [Supabase](https://supabase.com/) account and project
+- [Docker](https://www.docker.com/) for running Supabase locally
+- [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started) - Install with:
+  ```bash
+  npm install -g supabase
+  # or
+  brew install supabase/tap/supabase
+  ```
 
 ### Setup
 
-1. **Create a Supabase project**
-   - Go to [supabase.com](https://supabase.com) and create a new project
-   - Wait for the database to be ready
-
-2. **Install dependencies**
+1. **Install dependencies**
    ```bash
    bun install
    ```
 
-3. **Configure environment variables**
+2. **Initialize Supabase locally**
+   ```bash
+   supabase init
+   ```
+
+3. **Start local Supabase stack**
+   ```bash
+   supabase start
+   ```
+
+   This will start all Supabase services in Docker containers. The command outputs your local credentials - save these!
+
+4. **Configure environment variables**
    ```bash
    # Copy the example env file
    cp .env.local.example .env.local
@@ -43,20 +57,29 @@ A production-ready Next.js starter with Feature-Sliced Design architecture.
    bunx @better-auth/cli secret
    ```
 
-   Then edit `.env.local` and add your Supabase credentials:
-   - `DATABASE_URL`: Get from Supabase Settings → Database → Connection Pooler (use Transaction mode)
-   - `NEXT_PUBLIC_SUPABASE_URL`: Get from Supabase Settings → API → Project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Get from Supabase Settings → API → Project API keys (anon/public)
+   Edit `.env.local` and update if needed (the example file has local defaults):
+   - `DATABASE_URL`: Direct connection to local Postgres (default: `postgresql://postgres:postgres@localhost:54322/postgres`)
+   - `NEXT_PUBLIC_SUPABASE_URL`: Local API URL (default: `http://localhost:54321`)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Copy from `supabase start` output
+   - `BETTER_AUTH_SECRET`: Your generated secret
 
-4. **Push database schema to Supabase**
+5. **Push database schema**
    ```bash
    bun db:push
    ```
 
-5. **Start dev server**
+6. **Start dev server**
    ```bash
    bun dev
    ```
+
+7. **Access Supabase Studio** (optional)
+   - Open http://localhost:54323 to manage your database, storage, and auth
+
+**Stopping Supabase:**
+```bash
+supabase stop
+```
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
 
@@ -98,19 +121,19 @@ bun db:studio     # Open Drizzle Studio
 
 ## Environment Variables
 
-See `.env.local.example` for all required variables:
+See `.env.local.example` for all variables. For local development with self-hosted Supabase:
 
 ```env
-# Supabase Database (connection pooler for serverless)
-DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
-
-# Supabase API
-NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+# Local Supabase (self-hosted)
+DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<from-supabase-start-output>
 
 # Better Auth
-BETTER_AUTH_SECRET=your-secret-here
+BETTER_AUTH_SECRET=<your-generated-secret>
 ```
+
+For production with Supabase Cloud, see the commented section in `.env.local.example`.
 
 ## Features
 
@@ -151,9 +174,12 @@ await storage.deleteFile('bucket-name', ['file1.txt', 'file2.txt']); // Multiple
 
 ### Setting up Storage Buckets
 
-1. Go to your Supabase project → Storage
-2. Create a new bucket (e.g., `avatars`, `documents`)
-3. Configure bucket policies:
+1. Open Supabase Studio at http://localhost:54323
+2. Navigate to Storage in the sidebar
+3. Create a new bucket (e.g., `avatars`, `documents`)
+4. Configure bucket policies:
    - **Public bucket**: Anyone can read files
    - **Private bucket**: Requires authentication and RLS policies
-4. Use the storage helpers in your code
+5. Use the storage helpers in your code
+
+For production/cloud Supabase, access the dashboard at your project URL instead.
