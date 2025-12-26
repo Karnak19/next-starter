@@ -1,14 +1,10 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: devdb
-      POSTGRES_USER: dev
-      POSTGRES_PASSWORD: devpass
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
+# This file is no longer needed as the project now uses Supabase for Postgres and Storage.
+#
+# To set up your development environment:
+# 1. Create a Supabase project at https://supabase.com
+# 2. Copy .env.local.example to .env.local
+# 3. Fill in your Supabase credentials
+# 4. Run: bun db:push to sync your schema with Supabase
+#
+# If you need a local development database, consider using Supabase CLI:
+# https://supabase.com/docs/guides/cli/local-development
