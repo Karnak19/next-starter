@@ -1,1 +1,1 @@
-export { s3Config, storage } from "./s3-client";
+export { supabase, storage } from "./supabase-client";

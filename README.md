@@ -7,8 +7,8 @@ A production-ready Next.js starter with Feature-Sliced Design architecture.
 - **Runtime**: [Bun](https://bun.sh/)
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router, React 19, Turbopack)
 - **API**: [Elysia.js](https://elysiajs.com/) + [Eden Treaty](https://elysiajs.com/eden/overview.html)
-- **Database**: [Drizzle ORM](https://orm.drizzle.team/) + PostgreSQL (Bun SQL driver)
-- **Storage**: [MinIO](https://min.io/) (S3-compatible object storage)
+- **Database**: [Drizzle ORM](https://orm.drizzle.team/) + [Supabase Postgres](https://supabase.com/docs/guides/database) (Bun SQL driver)
+- **Storage**: [Supabase Storage](https://supabase.com/docs/guides/storage) (Self-hosted)
 - **Auth**: [Better Auth](https://www.better-auth.com/)
 - **State**: [TanStack Query](https://tanstack.com/query)
 - **UI**: [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
@@ -30,14 +30,16 @@ A production-ready Next.js starter with Feature-Sliced Design architecture.
    bun install
    ```
 
-2. **Start database and storage**
+2. **Start Supabase services**
    ```bash
    docker compose -f docker-compose.dev.yml up -d
    ```
 
-   This starts:
-   - **PostgreSQL** on port 5432
-   - **MinIO** on port 9000 (API) and 9001 (Console)
+   This starts self-hosted Supabase with:
+   - **Postgres** on port 5432
+   - **Storage API** via Kong gateway on port 8000
+   - **PostgREST** for database API
+   - **ImgProxy** for image transformations
 
 3. **Configure environment variables**
    ```bash
@@ -50,12 +52,22 @@ A production-ready Next.js starter with Feature-Sliced Design architecture.
 
    The `.env.local.example` has defaults that work out of the box. Update `BETTER_AUTH_SECRET` with your generated value.
 
-4. **Create MinIO bucket** (first time only)
-   - Open MinIO Console at http://localhost:9001
-   - Login with `minioadmin` / `minioadmin`
-   - Go to "Buckets" → "Create Bucket"
-   - Create a bucket named `uploads` (or whatever you set in `S3_BUCKET`)
-   - Set bucket access policy to public if needed
+4. **Create storage buckets**
+
+   You can create buckets either via SQL or using the Supabase client:
+
+   **Via SQL:**
+   ```sql
+   -- Connect to postgres and run:
+   INSERT INTO storage.buckets (id, name, public)
+   VALUES ('avatars', 'avatars', true);
+   ```
+
+   **Or via code:**
+   ```typescript
+   import { supabase } from '@/shared/storage';
+   await supabase.storage.createBucket('avatars', { public: true });
+   ```
 
 5. **Push database schema**
    ```bash
@@ -88,7 +100,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 │       ├── api/            # Eden Treaty clients
 │       ├── auth/           # Better Auth config
 │       ├── db/             # Drizzle ORM + schema
-│       ├── storage/        # S3/MinIO storage client
+│       ├── storage/        # Supabase storage client
 │       ├── lib/            # Utilities (cn, query client)
 │       └── ui/             # shadcn/ui components
 ├── drizzle/                # Database migrations
@@ -115,20 +127,18 @@ bun db:studio     # Open Drizzle Studio
 See `.env.local.example` for all variables. Local development defaults:
 
 ```env
-# Database
-DATABASE_URL=postgresql://dev:devpass@localhost:5432/devdb
+# Database (Supabase Postgres)
+DATABASE_URL=postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:5432/postgres
 
-# MinIO Storage
-S3_ENDPOINT=http://localhost:9000
-S3_ACCESS_KEY_ID=minioadmin
-S3_SECRET_ACCESS_KEY=minioadmin
-S3_BUCKET=uploads
+# Supabase API (Kong gateway)
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<default-anon-key-in-example-file>
 
 # Better Auth
 BETTER_AUTH_SECRET=<your-generated-secret>
 ```
 
-For production with AWS S3 or other providers, update the S3 settings accordingly.
+The `.env.local.example` file includes default JWT tokens for local development. For production, generate new secrets.
 
 ## Features
 
@@ -136,53 +146,74 @@ For production with AWS S3 or other providers, update the S3 settings accordingl
 - **Isomorphic Eden**: Same API client works on server and client
 - **Auth ready**: Email/password auth with Better Auth
 - **Streaming**: React Suspense with server components
-- **Fast DB**: Bun's native SQL driver with Drizzle ORM
-- **File storage**: S3-compatible storage (MinIO) using Bun's built-in crypto for AWS signature v4
+- **Fast DB**: Bun's native SQL driver with Drizzle ORM + Supabase Postgres
+- **File storage**: Supabase Storage with self-hosted setup
 
-## Using Object Storage
+## Using Supabase Storage
 
-The storage client is available at `src/shared/storage/`. It uses Bun's native APIs (fetch + crypto) to work with MinIO locally and any S3-compatible service in production. No external dependencies needed.
+The storage client is available at `src/shared/storage/`. It uses the official `@supabase/supabase-js` client to work with your self-hosted Supabase instance.
 
 **Example usage:**
 
 ```typescript
 import { storage } from '@/shared/storage';
 
-// Upload a file (uses default bucket from env)
+// Upload a file
 const file = new File(['content'], 'example.txt');
-await storage.uploadFile('path/to/file.txt', file);
-
-// Or specify a bucket
-await storage.uploadFile('my-bucket', 'path/to/file.txt', file);
+await storage.uploadFile('avatars', 'user/profile.jpg', file);
 
 // Get public URL
-const url = storage.getPublicUrl('path/to/file.txt');
+const url = storage.getPublicUrl('avatars', 'user/profile.jpg');
 
-// Create signed URL for private files (expires in 3600 seconds)
-const { signedUrl } = await storage.createSignedUrl('path/to/file.txt', 3600);
+// Create signed URL for private files (expires in 60 seconds)
+const { signedUrl } = await storage.createSignedUrl('avatars', 'user/profile.jpg', 60);
 
 // List files
-const { files } = await storage.listFiles();
-const { files: prefixed } = await storage.listFiles('my-bucket', 'folder/');
+const files = await storage.listFiles('avatars', 'user/');
 
 // Download a file
-const blob = await storage.downloadFile('path/to/file.txt');
+const blob = await storage.downloadFile('avatars', 'user/profile.jpg');
 
 // Delete files
-await storage.deleteFile('path/to/file.txt');
-await storage.deleteFile('my-bucket', ['file1.txt', 'file2.txt']); // Multiple files
+await storage.deleteFile('avatars', 'user/profile.jpg');
+await storage.deleteFile('avatars', ['file1.jpg', 'file2.jpg']); // Multiple files
 ```
 
 ### Setting up Storage Buckets
 
-**Local (MinIO):**
-1. Open MinIO Console at http://localhost:9001
-2. Login with `minioadmin` / `minioadmin`
-3. Click "Buckets" → "Create Bucket"
-4. Name it (e.g., `uploads`, `avatars`, `documents`)
-5. Set access policy if needed (public/private)
+Buckets must be created before you can upload files. You have several options:
 
-**Production (AWS S3, DigitalOcean Spaces, etc.):**
-- Create bucket in your provider's dashboard
-- Update environment variables with your credentials
-- The same storage helpers work without code changes
+**Option 1: Via SQL** (Connect to postgres at localhost:5432)
+```sql
+-- Create a public bucket for avatars
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true);
+
+-- Create a private bucket for documents
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('documents', 'documents', false);
+```
+
+**Option 2: Via Supabase client**
+```typescript
+import { supabase } from '@/shared/storage';
+
+// Create public bucket
+await supabase.storage.createBucket('avatars', { public: true });
+
+// Create private bucket
+await supabase.storage.createBucket('documents', { public: false });
+```
+
+**Option 3: Via REST API**
+```bash
+curl -X POST http://localhost:8000/storage/v1/bucket \
+  -H "apikey: YOUR_ANON_KEY" \
+  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"avatars","name":"avatars","public":true}'
+```
+
+### Access Policies
+
+For private buckets, you can set up Row Level Security (RLS) policies in Postgres to control access. The self-hosted setup includes the storage schema with all necessary tables.
