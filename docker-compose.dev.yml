@@ -1,37 +1,5 @@
-# Self-hosted Supabase Development Setup
-#
-# This project uses Supabase CLI for local development, which manages its own Docker containers.
-# The Supabase CLI provides a complete local stack including:
-# - PostgreSQL database
-# - PostgREST API server
-# - GoTrue auth server
-# - Storage API
-# - Realtime server
-# - Dashboard UI
-#
-# Setup Instructions:
-# 1. Install Supabase CLI: https://supabase.com/docs/guides/cli/getting-started
-#    npm install -g supabase
-#    # or
-#    brew install supabase/tap/supabase
-#
-# 2. Initialize Supabase in this project:
-#    supabase init
-#
-# 3. Start the local Supabase stack:
-#    supabase start
-#
-# 4. The command will output your local credentials. Copy them to .env.local
-#
-# 5. Stop Supabase when done:
-#    supabase stop
-#
-# Access the local Supabase Studio at: http://localhost:54323
-#
-# Note: If you prefer a simpler setup with just PostgreSQL, you can use this instead:
-
 services:
-  # Simple PostgreSQL-only setup (alternative to full Supabase stack)
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     environment:
@@ -42,8 +10,30 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # Uncomment to start PostgreSQL only (for projects not using Supabase Storage)
-    # profiles: ["postgres-only"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d devdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage (S3-compatible)
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
+  minio_data:
