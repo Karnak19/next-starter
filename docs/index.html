@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+      Next.js Modern Starter — Ship faster with a production-ready foundation
+    </title>
+    <meta
+      name="description"
+      content="Stop wasting time on boilerplate. A Next.js 16 starter with authentication, PocketBase backend, file storage, and Feature-Sliced Design architecture — ready to deploy."
+    >
+    <link rel="icon" href="https://nextjs.org/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    >
+    <style>
+    /* Reset & Base */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* Light Theme */
+      --bg: #fdfdfd;
+      --bg-alt: #f4f4f5;
+      --text-main: #18181b;
+      --text-muted: #71717a;
+      --border: #e4e4e7;
+      --primary: #18181b;
+      --primary-fg: #ffffff;
+      --card-bg: rgba(255, 255, 255, 0.6);
+      --glass-border: rgba(228, 228, 231, 0.6);
+      --focus-ring: rgba(24, 24, 27, 0.2);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        /* Dark Theme */
+        --bg: #09090b;
+        --bg-alt: #121215;
+        --text-main: #fafafa;
+        --text-muted: #a1a1aa;
+        --border: #27272a;
+        --primary: #fafafa;
+        --primary-fg: #09090b;
+        --card-bg: rgba(24, 24, 27, 0.4);
+        --glass-border: rgba(39, 39, 42, 0.6);
+        --focus-ring: rgba(250, 250, 250, 0.2);
+      }
+    }
+
+    body {
+      font-family: "Outfit", -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: "Instrument Serif", serif;
+      font-weight: 400;
+      line-height: 1.1;
+    }
+
+    code,
+    .mono {
+      font-family: "DM Mono", monospace;
+    }
+
+    /* Layout */
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      padding: 20px 0;
+      background: transparent;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s ease;
+    }
+
+    header.scrolled {
+      border-bottom-color: var(--border);
+      background: var(--card-bg);
+    }
+
+    header .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      height: 24px;
+      width: auto;
+    }
+
+    .project-name {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .logo {
+        filter: invert(1);
+      }
+    }
+
+    .github-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .github-link:hover {
+      color: var(--text-main);
+    }
+    .github-link svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    /* Main Content */
+    main {
+      padding-top: 100px;
+      background-image:
+        radial-gradient(
+          circle at 50% 0%,
+          rgba(120, 119, 198, 0.05) 0%,
+          transparent 40%
+        ),
+        radial-gradient(
+          circle at 80% 20%,
+          rgba(255, 255, 255, 0.05) 0%,
+          transparent 20%
+        );
+    }
+
+    /* Hero */
+    .hero {
+      padding: 80px 0 100px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(
+        circle,
+        rgba(120, 120, 120, 0.03) 0%,
+        transparent 70%
+      );
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .hero h1 {
+      font-size: clamp(3.5rem, 8vw, 5.5rem);
+      margin-bottom: 24px;
+      letter-spacing: -0.03em;
+      background: linear-gradient(
+        to bottom,
+        var(--text-main),
+        var(--text-muted)
+      );
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      padding-bottom: 0.1em; /* Prevent descender clipping */
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      font-family: "Instrument Serif", serif;
+      color: var(--text-muted);
+      -webkit-text-fill-color: var(--text-muted);
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 580px;
+      margin: 0 auto 40px;
+      font-weight: 300;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 9999px; /* Pill shape */
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-fg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-main);
+      border-color: var(--border);
+    }
+
+    .btn-outline:hover {
+      background: var(--bg-alt);
+      border-color: var(--text-muted);
+    }
+
+    /* Sections General */
+    section {
+      margin-bottom: 120px;
+    }
+
+    .section-title {
+      font-size: 2.5rem;
+      margin-bottom: 48px;
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+
+    /* Features */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .card:hover {
+      border-color: var(--text-muted);
+      transform: translateY(-4px);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .card h3 {
+      font-family:
+        "Outfit", sans-serif; /* Keep headers Sans for modern feel in cards */
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* Tech Stack */
+    .stack-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .stack-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .stack-item:hover {
+      border-color: var(--text-muted);
+      background: var(--bg-alt);
+      transform: scale(1.02);
+    }
+
+    .stack-item img {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+    }
+
+    /* Code Block */
+    .code-block {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+      font-family: "DM Mono", monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+
+    .code-block .comment {
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    .code-block .command {
+      color: var(--text-main);
+    }
+
+    /* Getting Started */
+    .getting-started {
+      background: var(--bg-alt);
+      padding: 80px 0;
+      margin: 0 -24px;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    .getting-started .container {
+      max-width: 800px;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .step-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "DM Mono", monospace;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text-main);
+      flex-shrink: 0;
+    }
+
+    .step-content h3 {
+      font-family: "Outfit", sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .step-content p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+    }
+
+    /* Project Structure */
+    .structure-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .structure-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .structure-description h3 {
+      font-family: "Outfit", sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .structure-description p {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.7;
+    }
+
+    .structure-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .structure-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 0.95rem;
+    }
+
+    .structure-list code {
+      background: var(--bg-alt);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .structure-list span {
+      color: var(--text-muted);
+    }
+
+    .tree {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    .tree pre {
+      margin: 0;
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text-muted);
+      white-space: pre;
+    }
+
+    .tree .folder {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .tree .comment {
+      opacity: 0.5;
+      font-size: 12px;
+    }
+
+    /* Code Examples Section */
+    .code-examples {
+      padding: 80px 0;
+    }
+
+    .code-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+    }
+
+    .code-example {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 40px;
+      align-items: start;
+    }
+
+    .code-example:nth-child(even) {
+      direction: rtl;
+    }
+
+    .code-example:nth-child(even) > * {
+      direction: ltr;
+    }
+
+    @media (max-width: 900px) {
+      .code-example,
+      .code-example:nth-child(even) {
+        grid-template-columns: 1fr;
+        direction: ltr;
+      }
+    }
+
+    .code-example-info h3 {
+      font-family: "Outfit", sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .code-example-info p {
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    .code-example-info ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .code-example-info li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .code-example-info li::before {
+      content: "→";
+      color: var(--text-main);
+      flex-shrink: 0;
+    }
+
+    .code-snippet {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .code-snippet-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-family: "DM Mono", monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .code-snippet-header .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    .code-snippet pre {
+      padding: 20px;
+      margin: 0;
+      overflow-x: auto;
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+
+    .code-snippet .keyword {
+      color: #c678dd;
+    }
+
+    .code-snippet .function {
+      color: #61afef;
+    }
+
+    .code-snippet .string {
+      color: #98c379;
+    }
+
+    .code-snippet .comment {
+      opacity: 0.5;
+    }
+
+    .code-snippet .type {
+      color: #e5c07b;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .code-snippet .keyword {
+        color: #a626a4;
+      }
+      .code-snippet .function {
+        color: #4078f2;
+      }
+      .code-snippet .string {
+        color: #50a14f;
+      }
+      .code-snippet .type {
+        color: #c18401;
+      }
+    }
+
+    /* Deployment Section */
+    .deployment {
+      background: var(--bg-alt);
+      padding: 80px 0;
+      margin: 0 -24px;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    .deployment-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .deployment-card {
+      background: var(--card-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 32px;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: all 0.3s ease;
+    }
+
+    .deployment-card:hover {
+      border-color: var(--text-muted);
+      transform: translateY(-4px);
+    }
+
+    .deployment-card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .deployment-card-header img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+
+    .deployment-card-header h3 {
+      font-family: "Outfit", sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .deployment-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .deployment-card .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* FAQ Section */
+    .faq {
+      padding: 80px 0;
+    }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 32px;
+      margin-top: 48px;
+    }
+
+    @media (max-width: 500px) {
+      .faq-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .faq-item {
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .faq-item h3 {
+      font-family: "Outfit", sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .faq-item p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .faq-item a {
+      color: var(--text-main);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    /* CTA Section */
+    .cta {
+      text-align: center;
+      padding: 100px 0;
+      position: relative;
+    }
+
+    .cta::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 600px;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--border),
+        transparent
+      );
+    }
+
+    .cta h2 {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .cta p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 500px;
+      margin: 0 auto 32px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+      background: var(--bg-alt);
+    }
+
+    footer p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--text-main);
+      text-decoration: none;
+      border-bottom: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+
+    footer a:hover {
+      border-color: var(--text-main);
+    }
+
+    /* Animation Utils */
+    .fade-in-up {
+      animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .delay-1 {
+      animation-delay: 0.1s;
+    }
+    .delay-2 {
+      animation-delay: 0.2s;
+    }
+    .delay-3 {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <div class="logo-group">
+          <img
+            src="https://nextjs.org/static/favicon/favicon-32x32.png"
+            alt="Logo"
+            class="logo"
+          >
+          <span class="project-name">Next.js Starter</span>
+        </div>
+        <a href="https://github.com/karnak19/next-starter" class="github-link">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
+            />
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero fade-in-up">
+        <div class="container">
+          <h1>
+            Ship faster with a <br>
+            <em>modern</em> foundation
+          </h1>
+          <p class="fade-in-up delay-1">
+            Stop wasting time on boilerplate. Start with authentication,
+            database, file storage, and a scalable architecture — all
+            pre-configured and ready to deploy.
+          </p>
+          <div class="buttons fade-in-up delay-2">
+            <a
+              href="https://github.com/karnak19/next-starter"
+              class="btn btn-primary"
+            >
+              Clone & Start Building
+            </a>
+            <a
+              href="https://github.com/karnak19/next-starter#readme"
+              class="btn btn-outline"
+            >
+              View Documentation
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="features fade-in-up delay-3">
+        <div class="container">
+          <h2 class="section-title">Everything you need, nothing you don't</h2>
+          <div class="grid">
+            <div class="card">
+              <h3>Authentication that just works</h3>
+              <p>
+                Sign up, sign in, password reset — handled. Reactive state with
+                <code>useSyncExternalStore</code> keeps your UI in sync
+                instantly, while secure cookies enable seamless server-side
+                access.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Architecture that scales</h3>
+              <p>
+                Built on Feature-Sliced Design principles. Clear boundaries
+                between features, widgets, and shared code mean your codebase
+                stays organized as your team and product grow.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Forms without the pain</h3>
+              <p>
+                Zod schemas + React Hook Form = type-safe validation from
+                frontend to backend. Define once, validate everywhere. No more
+                runtime surprises.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Own your infrastructure</h3>
+              <p>
+                Deploy anywhere with Docker Compose. Optimized for Coolify, but
+                works with any container platform. Your data, your servers, your
+                rules.
+              </p>
+            </div>
+            <div class="card">
+              <h3>File uploads, simplified</h3>
+              <p>
+                Pre-configured Cloudflare R2 client for S3-compatible storage.
+                Upload files, generate presigned URLs, and manage assets without
+                vendor lock-in.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Backend you can extend</h3>
+              <p>
+                PocketBase gives you a real-time database, auth, and file
+                storage in a single binary. Add custom endpoints and hooks with
+                JavaScript when you need more.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stack fade-in-up delay-3">
+        <div class="container">
+          <h2 class="section-title">Powered by tools you already love</h2>
+          <div class="stack-grid">
+            <a
+              href="https://nextjs.org"
+              class="stack-item"
+              target="_blank"
+              rel="noopener"
+            >
+              <img src="https://nextjs.org/favicon.ico" alt="Next.js">
+              <span>Next.js 16</span>
+            </a>
+            <a
+              href="https://react.dev"
+              class="stack-item"
+              target="_blank"
+              rel="noopener"
+            >
+              <img src="https://react.dev/favicon.ico" alt="React">
+              <span>React 19</span>
+            </a>
+            <a
+              href="https://pocketbase.io"
+              class="stack-item"
+              target="_blank"
+              rel="noopener"
+            >
+              <img src="https://pocketbase.io/images/logo.svg" alt="PocketBase">
+              <span>PocketBase</span>
+            </a>
+            <a
+              href="https://tanstack.com/query"
+              class="stack-item"
+              target="_blank"
+              rel="noopener"
+            >
+              <img src="https://tanstack.com/favicon.ico" alt="TanStack Query">
+              <span>TanStack Query</span>
+            </a>
+            <a
+              href="https://tailwindcss.com"
+              class="stack-item"
+              target="_blank"
+              rel="noopener"
+            >
+              <img
+                src="https://tailwindcss.com/favicons/favicon.ico"
+                alt="Tailwind CSS"
+              >
+              <span>Tailwind CSS</span>
+            </a>
+            <a
+              href="https://ui.shadcn.com"
+              class="stack-item"
+              target="_blank"
+              rel="noopener"
+            >
+              <img src="https://ui.shadcn.com/favicon.ico" alt="shadcn/ui">
+              <span>shadcn/ui</span>
+            </a>
+            <a
+              href="https://bun.sh"
+              class="stack-item"
+              target="_blank"
+              rel="noopener"
+            >
+              <img src="https://bun.sh/favicon.ico" alt="Bun">
+              <span>Bun</span>
+            </a>
+            <a
+              href="https://biomejs.dev"
+              class="stack-item"
+              target="_blank"
+              rel="noopener"
+            >
+              <img src="https://biomejs.dev/img/favicon.svg" alt="Biome">
+              <span>Biome</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Getting Started -->
+      <section class="getting-started">
+        <div class="container">
+          <h2 class="section-title">Up and running in 2 minutes</h2>
+          <div class="steps">
+            <div class="step">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h3>Clone the repository</h3>
+                <p>Use the GitHub template or clone directly to get started.</p>
+                <div class="code-block">
+                  <span class="command"
+                    >git clone https://github.com/karnak19/next-starter.git
+                    my-app</span
+                  >
+                  <br>
+                  <span class="command">cd my-app</span>
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h3>Install dependencies & start services</h3>
+                <p>
+                  Bun handles package installation. Docker Compose starts
+                  PocketBase.
+                </p>
+                <div class="code-block">
+                  <span class="command">bun install</span>
+                  <br>
+                  <span class="command"
+                    >docker compose -f docker-compose.yml -f
+                    docker-compose.dev.yml up -d</span
+                  >
+                  <br>
+                  <span class="comment"
+                    ># PocketBase is now running at http://localhost:8080</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h3>Configure & launch</h3>
+                <p>Copy the environment template and start the dev server.</p>
+                <div class="code-block">
+                  <span class="command">cp .env.local.example .env.local</span>
+                  <br>
+                  <span class="command">bun dev</span>
+                  <br>
+                  <span class="comment"># Open http://localhost:3000</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Code Examples -->
+      <section class="code-examples">
+        <div class="container">
+          <h2 class="section-title">See how it works</h2>
+
+          <div class="code-tabs">
+            <!-- Auth Example -->
+            <div class="code-example">
+              <div class="code-example-info">
+                <h3>Client-side Authentication</h3>
+                <p>
+                  The <code>useAuth</code> hook gives you reactive access to the
+                  current user. No prop drilling, no context boilerplate — just
+                  import and use.
+                </p>
+                <ul>
+                  <li>Automatic hydration handling prevents UI flicker</li>
+                  <li>Real-time updates when auth state changes</li>
+                  <li>Type-safe user object from PocketBase</li>
+                </ul>
+              </div>
+              <div class="code-snippet">
+                <div class="code-snippet-header">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span>my-component.tsx</span>
+                </div>
+                <pre
+                ><span class="keyword">import</span> { useAuth } <span class="keyword">from</span> <span class="string">"@/shared/providers/auth-provider"</span>;
+
+<span class="keyword">function</span> <span class="function">Dashboard</span>() {
+  <span class="keyword">const</span> { user, isAuthenticated, isLoading } = <span class="function">useAuth</span>();
+
+  <span class="keyword">if</span> (isLoading) <span class="keyword">return</span> &lt;<span class="type">Skeleton</span> /&gt;;
+  <span class="keyword">if</span> (!isAuthenticated) <span class="keyword">return</span> &lt;<span class="type">SignInPrompt</span> /&gt;;
+
+  <span class="keyword">return</span> (
+    &lt;<span class="type">div</span>&gt;
+      Welcome back, {user.name}!
+    &lt;/<span class="type">div</span>&gt;
+  );
+}</pre>
+              </div>
+            </div>
+
+            <!-- Sign In Example -->
+            <div class="code-example">
+              <div class="code-example-info">
+                <h3>Sign In & Sign Out</h3>
+                <p>
+                  Authentication actions are simple async functions. Call them
+                  from anywhere — form handlers, buttons, or effects.
+                </p>
+                <ul>
+                  <li>Cookie sync keeps server and client in sync</li>
+                  <li>Automatic error handling with typed responses</li>
+                  <li>Works with Server Components out of the box</li>
+                </ul>
+              </div>
+              <div class="code-snippet">
+                <div class="code-snippet-header">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span>auth-actions.ts</span>
+                </div>
+                <pre
+                ><span class="keyword">import</span> { signIn, signOut, syncAuthCookie } <span class="keyword">from</span> <span class="string">"@/shared/auth/client"</span>;
+
+<span class="comment">// Sign in with email and password</span>
+<span class="keyword">async function</span> <span class="function">handleSignIn</span>(email: <span class="type">string</span>, password: <span class="type">string</span>) {
+  <span class="keyword">await</span> <span class="function">signIn</span>(email, password);
+  <span class="function">syncAuthCookie</span>(); <span class="comment">// Sync to cookie for SSR</span>
+}
+
+<span class="comment">// Sign out clears everything</span>
+<span class="keyword">function</span> <span class="function">handleSignOut</span>() {
+  <span class="function">signOut</span>(); <span class="comment">// Clears auth store + cookie</span>
+}</pre>
+              </div>
+            </div>
+
+            <!-- Server Auth Example -->
+            <div class="code-example">
+              <div class="code-example-info">
+                <h3>Server-side Auth Access</h3>
+                <p>
+                  Server Components can read auth state from cookies. Perfect
+                  for protecting pages, fetching user-specific data, or
+                  rendering personalized content.
+                </p>
+                <ul>
+                  <li>Zero client JavaScript for auth checks</li>
+                  <li>Secure — tokens never exposed to client</li>
+                  <li>Works with Next.js middleware</li>
+                </ul>
+              </div>
+              <div class="code-snippet">
+                <div class="code-snippet-header">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span>page.tsx (Server Component)</span>
+                </div>
+                <pre
+                ><span class="keyword">import</span> { cookies } <span class="keyword">from</span> <span class="string">"next/headers"</span>;
+<span class="keyword">import</span> PocketBase <span class="keyword">from</span> <span class="string">"pocketbase"</span>;
+
+<span class="keyword">export default async function</span> <span class="function">ProtectedPage</span>() {
+  <span class="keyword">const</span> cookieStore = <span class="keyword">await</span> <span class="function">cookies</span>();
+  <span class="keyword">const</span> pb = <span class="keyword">new</span> <span class="function">PocketBase</span>(process.env.POCKETBASE_URL);
+
+  <span class="keyword">const</span> authCookie = cookieStore.<span class="function">get</span>(<span class="string">"pb_auth"</span>);
+  <span class="keyword">if</span> (authCookie?.value) {
+    pb.authStore.<span class="function">loadFromCookie</span>(<span class="string">`pb_auth=</span>${authCookie.value}<span class="string">`</span>);
+  }
+
+  <span class="keyword">const</span> user = pb.authStore.isValid ? pb.authStore.record : <span class="keyword">null</span>;
+  <span class="comment">// Now use `user` to fetch data or render UI</span>
+}</pre>
+              </div>
+            </div>
+
+            <!-- Form Example -->
+            <div class="code-example">
+              <div class="code-example-info">
+                <h3>Type-safe Form Validation</h3>
+                <p>
+                  Define your schema once with Zod, and get type inference
+                  everywhere. React Hook Form handles the rest — validation,
+                  errors, and submission.
+                </p>
+                <ul>
+                  <li>Compile-time type checking</li>
+                  <li>Automatic error messages</li>
+                  <li>Reuse schemas on server for API validation</li>
+                </ul>
+              </div>
+              <div class="code-snippet">
+                <div class="code-snippet-header">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span>sign-in-form.tsx</span>
+                </div>
+                <pre
+                ><span class="keyword">import</span> { z } <span class="keyword">from</span> <span class="string">"zod"</span>;
+<span class="keyword">import</span> { useForm } <span class="keyword">from</span> <span class="string">"react-hook-form"</span>;
+<span class="keyword">import</span> { zodResolver } <span class="keyword">from</span> <span class="string">"@hookform/resolvers/zod"</span>;
+
+<span class="keyword">const</span> schema = z.<span class="function">object</span>({
+  email: z.<span class="function">string</span>().<span class="function">email</span>(<span class="string">"Invalid email"</span>),
+  password: z.<span class="function">string</span>().<span class="function">min</span>(8, <span class="string">"Min 8 characters"</span>),
+});
+
+<span class="keyword">type</span> <span class="type">FormData</span> = z.<span class="function">infer</span>&lt;<span class="keyword">typeof</span> schema&gt;;
+
+<span class="keyword">function</span> <span class="function">SignInForm</span>() {
+  <span class="keyword">const</span> { register, handleSubmit, formState } = <span class="function">useForm</span>&lt;<span class="type">FormData</span>&gt;({
+    resolver: <span class="function">zodResolver</span>(schema),
+  });
+  <span class="comment">// formState.errors is fully typed!</span>
+}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Project Structure -->
+      <section class="structure">
+        <div class="container">
+          <h2 class="section-title">Organized from day one</h2>
+          <div class="structure-grid">
+            <div class="structure-description">
+              <h3>Feature-Sliced Design</h3>
+              <p>
+                A battle-tested architecture that keeps your code organized as
+                complexity grows. Each layer has clear responsibilities and
+                import rules.
+              </p>
+              <ul class="structure-list">
+                <li>
+                  <code>features/</code>
+                  <span
+                    >User interactions and business logic (auth forms, etc.)</span
+                  >
+                </li>
+                <li>
+                  <code>widgets/</code>
+                  <span
+                    >Composite UI blocks that combine features (user menu, etc.)</span
+                  >
+                </li>
+                <li>
+                  <code>shared/</code>
+                  <span
+                    >Reusable utilities, UI components, and API clients</span
+                  >
+                </li>
+              </ul>
+            </div>
+            <div class="tree">
+              <pre><span class="folder">src/</span>
+├── <span class="folder">features/</span>         <span class="comment"># User interactions</span>
+│   └── <span class="folder">auth/</span>
+│       ├── sign-in-form.tsx
+│       ├── sign-up-form.tsx
+│       └── schemas.ts
+├── <span class="folder">widgets/</span>          <span class="comment"># Composite blocks</span>
+│   ├── <span class="folder">user-menu/</span>
+│   └── <span class="folder">health-status/</span>
+└── <span class="folder">shared/</span>           <span class="comment"># Shared code</span>
+    ├── <span class="folder">ui/</span>           <span class="comment"># shadcn components</span>
+    ├── <span class="folder">db/</span>           <span class="comment"># PocketBase clients</span>
+    ├── <span class="folder">auth/</span>         <span class="comment"># Auth helpers</span>
+    ├── <span class="folder">storage/</span>      <span class="comment"># R2 client</span>
+    ├── <span class="folder">providers/</span>    <span class="comment"># React providers</span>
+    └── <span class="folder">lib/</span>          <span class="comment"># Utilities</span></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Deployment -->
+      <section class="deployment">
+        <div class="container">
+          <h2 class="section-title">Deploy anywhere you want</h2>
+          <p
+            style="text-align: center; color: var(--text-muted); max-width: 600px; margin: 0 auto;"
+          >
+            This starter is designed for self-hosting, but works great with any
+            platform. Choose what fits your needs — no vendor lock-in.
+          </p>
+
+          <div class="deployment-options">
+            <a
+              href="https://coolify.io"
+              class="deployment-card"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="deployment-card-header">
+                <img
+                  src="https://coolify.io/android-launchericon-48-48.png"
+                  alt="Coolify"
+                >
+                <h3>Coolify</h3>
+              </div>
+              <p>
+                Self-hosted PaaS that makes deployment as easy as Vercel, but on
+                your own servers. The Docker Compose setup is optimized for
+                Coolify out of the box.
+              </p>
+              <span class="tag">Recommended</span>
+            </a>
+
+            <a
+              href="https://www.docker.com"
+              class="deployment-card"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="deployment-card-header">
+                <img
+                  src="https://www.docker.com/wp-content/uploads/2022/03/Moby-logo.png"
+                  alt="Docker"
+                >
+                <h3>Any Docker Host</h3>
+              </div>
+              <p>
+                Run on any VPS, dedicated server, or cloud instance with Docker
+                installed. DigitalOcean, Hetzner, AWS EC2, or your own hardware.
+              </p>
+              <span class="tag">Full control</span>
+            </a>
+
+            <a
+              href="https://vercel.com"
+              class="deployment-card"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="deployment-card-header">
+                <img src="https://vercel.com/favicon.ico" alt="Vercel">
+                <h3>Vercel + External DB</h3>
+              </div>
+              <p>
+                Deploy the Next.js frontend to Vercel and host PocketBase
+                separately. Great for teams who want managed infrastructure for
+                the frontend.
+              </p>
+              <span class="tag">Hybrid</span>
+            </a>
+
+            <a
+              href="https://railway.app"
+              class="deployment-card"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="deployment-card-header">
+                <img
+                  src="https://railway.app/brand/logo-light.png"
+                  alt="Railway"
+                >
+                <h3>Railway</h3>
+              </div>
+              <p>
+                Deploy both Next.js and PocketBase with a few clicks. Railway
+                handles containers, networking, and persistent storage
+                automatically.
+              </p>
+              <span class="tag">Easy setup</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section class="faq">
+        <div class="container">
+          <h2 class="section-title">Frequently asked questions</h2>
+
+          <div class="faq-grid">
+            <div class="faq-item">
+              <h3>Why PocketBase instead of a traditional database?</h3>
+              <p>
+                PocketBase gives you a database, authentication, file storage,
+                and real-time subscriptions in a single 15MB binary. No separate
+                services to manage, no complex setup. And don't let anyone tell
+                you SQLite doesn't scale — it handles thousands of concurrent
+                users without breaking a sweat. PocketBase is production-ready
+                for the vast majority of applications, not just MVPs.
+              </p>
+            </div>
+
+            <div class="faq-item">
+              <h3>Can I use this with a different database?</h3>
+              <p>
+                Technically yes, but that's not the point of this starter. If
+                you want Prisma, Drizzle, or another ORM, there are plenty of
+                excellent starters built around those. This one is specifically
+                designed around PocketBase's strengths — use it if that's what
+                you want.
+              </p>
+            </div>
+
+            <div class="faq-item">
+              <h3>Is Feature-Sliced Design overkill for small projects?</h3>
+              <p>
+                We don't follow FSD to the letter — just the parts that make
+                sense. Three folders (<code>features</code>,<code>widgets</code>
+                , <code>shared</code>) with simple import rules. No layers, no
+                segments, no over-engineering. It's lightweight structure that
+                grows with you, not a rigid framework.
+              </p>
+            </div>
+
+            <div class="faq-item">
+              <h3>Why Bun instead of Node.js?</h3>
+              <p>
+                Bun is significantly faster for installing dependencies and
+                running scripts. It's also a drop-in replacement for Node.js in
+                most cases. If you prefer Node, just replace <code>bun</code>
+                with <code>npm</code> or <code>pnpm</code> in the scripts —
+                everything else works the same.
+              </p>
+            </div>
+
+            <div class="faq-item">
+              <h3>How do I add OAuth providers (Google, GitHub, etc.)?</h3>
+              <p>
+                PocketBase has built-in OAuth2 support. Enable providers in the
+                PocketBase admin UI at <code>/_/</code>, add your client ID and
+                secret, and use the
+                <code>pb.collection('users').authWithOAuth2()</code> method. The
+                auth provider in this starter will pick up the session
+                automatically.
+              </p>
+            </div>
+
+            <div class="faq-item">
+              <h3>Can I use this for a SaaS with multiple tenants?</h3>
+              <p>
+                Yes, but you'll need to add tenant isolation. PocketBase
+                supports collection rules that can filter data by tenant ID. For
+                more complex multi-tenancy (separate databases per tenant), you
+                might want to look at a different architecture, but this starter
+                is a solid foundation for single-tenant or simple multi-tenant
+                apps.
+              </p>
+            </div>
+
+            <div class="faq-item">
+              <h3>Is Cloudflare R2 required for file storage?</h3>
+              <p>
+                No. PocketBase has built-in file storage that works great for
+                most use cases. R2 is pre-configured as an option for when you
+                need S3-compatible storage, CDN distribution, or want to
+                separate file storage from your database server.
+              </p>
+            </div>
+
+            <div class="faq-item">
+              <h3>How do I customize the UI components?</h3>
+              <p>
+                All UI components are from
+                <a href="https://ui.shadcn.com" target="_blank" rel="noopener"
+                  >shadcn/ui</a
+                >, which means they live in your codebase (not node_modules).
+                Edit them directly in <code>src/shared/ui/</code>. They're built
+                with Radix primitives and Tailwind, so customization is
+                straightforward.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="cta">
+        <div class="container">
+          <h2>Ready to build something <em>great</em>?</h2>
+          <p>
+            Join developers who've stopped reinventing the wheel and started
+            shipping faster.
+          </p>
+          <div class="buttons">
+            <a
+              href="https://github.com/karnak19/next-starter"
+              class="btn btn-primary"
+            >
+              Get the Starter
+            </a>
+            <a
+              href="https://github.com/karnak19/next-starter/stargazers"
+              class="btn btn-outline"
+              target="_blank"
+              rel="noopener"
+            >
+              Star on GitHub
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>
+          Made with care by <a href="https://github.com/karnak19">karnak19</a>.
+          Open source and free forever.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+    "use strict";
+    // Header scroll effect
+    window.addEventListener("scroll", () => {
+      const header = document.querySelector("header");
+      if (window.scrollY > 20) {
+        header.classList.add("scrolled");
+      } else {
+        header.classList.remove("scrolled");
+      }
+    });
+    </script>
+  </body>
+</html>
