@@ -1,121 +1,95 @@
 ---
-description: Feature-Sliced Design architecture rules for this Next.js project
+description: Simplified project architecture rules
 globs: src/**/*
 alwaysApply: false
 ---
 
-# Feature-Sliced Design (FSD) Architecture
+# Project Architecture
 
-This project uses Feature-Sliced Design methodology. Follow these rules strictly.
+This project uses a simplified architecture with three main layers in `src/`.
 
-## Layer Hierarchy
-
-Code lives in `src/` with strict layer hierarchy. **Higher layers can only import from lower layers.**
+## Structure
 
 ```
 src/
-├── app/          # Layer 1: Providers, global config
-├── pages/        # Layer 2: Page components (re-exported by Next.js routes)
-├── widgets/      # Layer 3: Large composite UI blocks
-├── features/     # Layer 4: User interactions and business logic
-├── entities/     # Layer 5: Business domain models
-└── shared/       # Layer 6: UI kit, utilities, API client, types
+├── features/     # User interactions and business logic
+├── widgets/      # Large composite UI blocks
+└── shared/       # UI kit, utilities, API client, types, providers
 ```
 
-## Import Rules (CRITICAL)
+## Import Rules
 
-| Layer    | Can Import From                            |
-| -------- | ------------------------------------------ |
-| app      | pages, widgets, features, entities, shared |
-| pages    | widgets, features, entities, shared        |
-| widgets  | features, entities, shared                 |
-| features | entities, shared                           |
-| entities | shared                                     |
-| shared   | External packages only                     |
+| Layer    | Can Import From       |
+| -------- | --------------------- |
+| widgets  | features, shared      |
+| features | shared                |
+| shared   | External packages only |
 
-### Forbidden Patterns
+### Guidelines
 
-- **Never import from higher layers** - entities cannot import from features
-- **Never import slice internals** - use public API (`@/shared/ui`, not `@/shared/ui/button/button.tsx`)
-- **Never cross-import same-layer slices** - `entities/user` cannot import from `entities/message`
+- **No barrel files** - import directly from files, not index.ts
+- **Flat structure** - avoid deep nesting, keep files at slice root
+- **Direct imports** - use `@/shared/ui/button` not `@/shared/ui`
 
 ## Path Aliases
 
-- `@/*` → `./src/*` (FSD layers)
+- `@/*` → `./src/*`
 - `~/*` → `./*` (project root)
 
 ```typescript
-// ✅ Correct
-import { api } from "@/shared/api";
+// ✅ Correct - direct file imports
+import { Button } from "@/shared/ui/button";
+import { SignInForm } from "@/features/auth/sign-in-form";
+import { UserMenu } from "@/widgets/user-menu/user-menu";
+import { Providers } from "@/shared/providers/providers";
+
+// ❌ Wrong - barrel imports
 import { Button } from "@/shared/ui";
-import { UserCard } from "@/entities/user";
-
-// ❌ Wrong - importing slice internals
-import { Button } from "@/shared/ui/button/button";
-
-// ❌ Wrong - importing from higher layer
-import { SendMessage } from "@/features/send-message"; // from entities layer
+import { SignInForm } from "@/features/auth";
 ```
 
 ## Slice Structure
 
-Each slice (folder within a layer) follows this structure:
+Keep slices flat with files at the root:
 
 ```
-slice-name/
-├── index.ts          # Public API - ONLY exports allowed externally
-├── ui/               # React components
-├── model/            # Business logic, state, types, hooks
-├── api/              # Queries, mutations, server actions
-├── lib/              # Internal utilities
-└── config/           # Configuration, constants
-```
+features/auth/
+├── sign-in-form.tsx
+├── sign-up-form.tsx
+├── use-sign-in.ts
+├── use-sign-up.ts
+└── schemas.ts
 
-Segments are optional - only create the ones you need.
+widgets/user-menu/
+└── user-menu.tsx
 
-## Next.js Integration
-
-Next.js `app/` folder handles routing at project root. Keep route files as thin re-exports:
-
-```typescript
-// app/chat/[threadId]/page.tsx
-export { ThreadPage as default } from "@/pages/thread";
-export { generateMetadata } from "@/pages/thread";
+shared/
+├── ui/           # shadcn components
+├── lib/          # utilities
+├── db/           # database clients
+├── auth/         # auth helpers
+├── storage/      # storage helpers
+├── providers/    # React providers
+└── config.ts     # app configuration
 ```
 
 ## Naming Conventions
 
-- **Slices**: `kebab-case` (e.g., `send-message`, `chat-window`)
-- **Components**: `kebab-case.tsx` (e.g., `send-message.tsx`)
-- **Hooks**: `use-kebab-case.ts` (e.g., `use-send-message.ts`)
-- **Features**: Named as actions (`send-message`, `create-thread`)
-- **Entities**: Named as nouns (`user`, `message`, `thread`)
+- **Folders**: `kebab-case` (e.g., `user-menu`, `health-status`)
+- **Components**: `kebab-case.tsx` (e.g., `sign-in-form.tsx`)
+- **Hooks**: `use-kebab-case.ts` (e.g., `use-sign-in.ts`)
+- **Features**: Named as actions (`auth`, `send-message`)
+- **Widgets**: Named as UI blocks (`user-menu`, `health-status`)
 
-## State Management
+## Next.js Integration
 
-- **Local state**: `useState`/`useReducer` in components
-- **Feature state**: Zustand store in `feature/model/store.ts`
-- **Server state**: React Query in `slice/api/queries.ts`
-- **Server actions**: `"use server"` in `feature/api/actions.ts`
+Page components live directly in the Next.js `app/` folder. No separate pages layer.
 
-## Creating New Slices
+```typescript
+// app/auth/sign-in/page.tsx
+import { SignInForm } from "@/features/auth/sign-in-form";
 
-When creating a new feature, entity, or widget:
-
-1. Create the slice folder with kebab-case name
-2. Add `index.ts` with public exports
-3. Add segments as needed (ui/, model/, api/, lib/)
-4. Only export what's needed externally via index.ts
-
-Example for a new feature:
-
-```
-src/features/send-message/
-├── index.ts              # export { SendMessageButton } from "./ui/send-message-button";
-├── ui/
-│   └── send-message-button.tsx
-├── model/
-│   └── use-send-message.ts
-└── api/
-    └── actions.ts        # "use server" actions
+export default function SignInPage() {
+  return <SignInForm />;
+}
 ```

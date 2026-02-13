@@ -1,0 +1,12 @@
+services:
+  pocketbase:
+    image: coollabsio/pocketbase:0.36.2
+    restart: unless-stopped
+    container_name: pocketbase
+    volumes:
+      - pb_data:/app/pb_data
+      - ./pocketbase/pb_hooks:/app/pb_hooks
+      - ./pocketbase/pb_migrations:/app/pb_migrations
+
+volumes:
+  pb_data:
