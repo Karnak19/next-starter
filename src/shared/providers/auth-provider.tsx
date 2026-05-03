@@ -1,6 +1,8 @@
 "use client";
 
-import type { RecordModel } from "pocketbase";
+import {
+  type UsersRecord,
+} from "@/shared/db";
 import {
   createContext,
   type ReactNode,
@@ -13,7 +15,7 @@ import {
 import { pbBrowser } from "@/shared/db/browser";
 
 type AuthContextValue = {
-  user: RecordModel | null;
+  user: UsersRecord | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 };
@@ -21,10 +23,10 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Cache for stable snapshot references to avoid infinite loops
-let cachedUser: RecordModel | null = null;
+let cachedUser: UsersRecord | null = null;
 let cachedUserId: string | undefined;
 
-function getUserSnapshot(): RecordModel | null {
+function getUserSnapshot(): UsersRecord | null {
   const currentRecord = pbBrowser.authStore.record;
   const currentId = currentRecord?.id;
   // Only update cache if the record id changed
@@ -39,7 +41,7 @@ function getIsValidSnapshot(): boolean {
   return pbBrowser.authStore.isValid;
 }
 
-function getServerUserSnapshot(): RecordModel | null {
+function getServerUserSnapshot(): UsersRecord | null {
   return null;
 }
 

@@ -12,6 +12,7 @@ A production-ready Next.js starter with Feature-Sliced Design architecture, desi
 - **UI**: [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
 - **Validation**: [Zod](https://zod.dev/) + [React Hook Form](https://react-hook-form.com/)
 - **Linting**: [Biome](https://biomejs.dev/)
+- **Codegen**: [pbkit](https://github.com/Karnak19/pbkit) (PocketBase typed SDK + TanStack Query)
 - **Architecture**: [Feature-Sliced Design](https://feature-sliced.design/)
 - **Deployment**: [Coolify](https://coolify.io/) (self-hosted PaaS)
 
@@ -46,7 +47,17 @@ A production-ready Next.js starter with Feature-Sliced Design architecture, desi
 
    Update the values as needed. The defaults work for local development.
 
-4. **Start dev server**
+4. **Generate types & SDK**
+
+   ```bash
+   bun run typegen
+   ```
+
+   This runs [pbkit](https://github.com/Karnak19/pbkit) to generate typed PocketBase SDK functions and TanStack Query options in `src/shared/db/generated/`. Requires PocketBase to be running (from step 2).
+
+   Regenerate after any schema change: `bun run typegen`
+
+5. **Start dev server**
    ```bash
    bun dev
    ```
@@ -73,7 +84,11 @@ docker compose down
 │   ├── widgets/            # Composite UI blocks (user menu, etc.)
 │   └── shared/             # Shared utilities and clients
 │       ├── auth/           # Auth helpers (client & server)
-│       ├── db/             # PocketBase clients (browser, server, admin)
+│       ├── db/             # PocketBase clients + pbkit generated code
+│       │   ├── generated/  # Auto-generated types, SDK, TanStack hooks (pbkit)
+│       │   ├── browser.ts  # Browser PB client
+│       │   ├── server.ts   # Server PB client
+│       │   └── admin.ts    # Admin PB client (superuser)
 │       ├── providers/      # React providers (auth, theme, query)
 │       ├── storage/        # R2 storage client
 │       ├── lib/            # Utilities (cn, query client)
@@ -89,6 +104,7 @@ bun build         # Build for production
 bun start         # Start production server
 bun lint          # Run Biome linter
 bun format        # Format code with Biome
+bun run typegen   # Generate PocketBase types, SDK, and TanStack Query options
 ```
 
 ## Environment Variables
@@ -201,6 +217,41 @@ routerAdd("GET", "/api/example", (e) => {
   // Full type hints available
 });
 ```
+
+## Type-safe SDK with pbkit
+
+[pbkit](https://github.com/Karnak19/pbkit) generates type-safe PocketBase SDK functions and TanStack Query options from your schema.
+
+### Generated files (`src/shared/db/generated/`)
+
+| File | Contents |
+|------|----------|
+| `types.gen.ts` | Record types (`UsersRecord`, `UsersCreate`, `UsersUpdate`, etc.) |
+| `client.gen.ts` | Default PocketBase client singleton |
+| `sdk.gen.ts` | CRUD functions (`getUser`, `listUsers`, `createUser`, etc.) |
+| `tanstack.gen.ts` | TanStack Query options (`userOptions`, `usersOptions`, `createUserMutationOptions`, etc.) |
+
+### Usage
+
+```typescript
+// Server component — get a single record
+import { getUser } from "@/shared/db/generated/sdk.gen";
+import { pbServer } from "@/shared/db/server";
+
+const user = await getUser(id, undefined, { client: pbServer });
+
+// Client component — TanStack Query
+import { userOptions } from "@/shared/db/generated/tanstack.gen";
+
+function MyComponent({ id }: { id: string }) {
+  const { data } = useQuery(userOptions(id));
+  return <div>{data?.name}</div>;
+}
+```
+
+### Configuration
+
+Edit `pbkit.config.ts` at the project root. By default it reads `PB_TYPEGEN_URL` or `POCKETBASE_URL` from your environment.
 
 ## Features
 
