@@ -291,6 +291,75 @@ The same `{ client }` argument threads through the generated TanStack options
 `POCKETBASE_URL` directly. A single `sdk.baseUrl` cannot serve both, so server
 code always passes its own client explicitly.
 
+## PocketBase proxy (`/api/pocketbase/*`)
+
+The app forwards a small, **explicit allowlist** of PocketBase routes through
+`/api/pocketbase/*` (defined in `next.config.ts`). Anything **not** on the list
+matches no rewrite, falls through to the Next.js router and returns **404**.
+This is deliberate: a deny-list would keep the PocketBase admin UI and the
+superuser endpoints one forgotten entry away from being exposed on the public
+app domain again — an allowlist fails closed.
+
+Deliberately **not** reachable through the app domain — each of these answers
+a plain **404**:
+
+- `/_/` — the PocketBase admin UI
+- `/api/collections/_superusers/*` — superuser login and API
+- `/api/backups`, `/api/settings`, `/api/logs`, `/api/crons` — superuser-only endpoints
+- `/api/collections` — the schema listing
+
+```bash
+curl -i https://your-app.example.com/api/pocketbase/_/
+# HTTP/2 404
+```
+
+> `next.config.ts` also sets `skipTrailingSlashRedirect: true`. Next's
+> trailing-slash normalization (`308 /foo/` → `/foo`) runs *before* rewrites, so
+> without it the admin path answered with a 308 redirect to the same 404.
+> Routes still resolve with or without a trailing slash — only the canonical
+> redirect is gone.
+
+### Reaching the admin UI privately
+
+The superuser never uses the app domain. Publish PocketBase on **loopback
+only** and tunnel it over SSH:
+
+```yaml
+# docker-compose.admin.yml — local only, never committed
+services:
+  pocketbase:
+    ports:
+      - "127.0.0.1:8080:8080"
+```
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.admin.yml up -d
+ssh -L 8080:127.0.0.1:8080 user@your-server
+# then open http://127.0.0.1:8080/_/
+```
+
+On Coolify, the equivalent is a separate internal domain for the PocketBase
+service, protected by basic auth or an IP allowlist. Never expose `/_/` through
+the app domain.
+
+### Trusted proxy / rate-limiting caveat
+
+Behind the rewrite, **every** request reaching PocketBase comes from the Next
+server's IP — PocketBase cannot see the real client IPs. Symptom: PocketBase's
+per-IP rate limiting throttles **all** users at once (one user's burst counts
+for everyone; you may see app-wide 429s). Fix: in the PocketBase settings, add
+the Next server's IP to the **trusted proxy allowlist**, so PocketBase reads
+the real client IP from `X-Forwarded-For` and rate-limits per actual client.
+
+### Adding a new collection
+
+The proxy only forwards the `users` collection (plus health, files and the
+OAuth2 redirect). When you add a collection the browser client must reach, add
+its routes to `POCKETBASE_PROXY_ROUTES` in `next.config.ts` — auth endpoints
+and records, with the exact route **before** the `/:path*` one — or the client
+will get 404s. Anything you don't add stays correctly unreachable from the
+public domain.
+
 ## Extending PocketBase
 
 PocketBase can be extended with JavaScript hooks in `pocketbase/pb_hooks/`. Files are automatically reloaded on changes.
