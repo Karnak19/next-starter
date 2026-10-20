@@ -12,14 +12,14 @@ import {
   FormMessage,
 } from "@/shared/ui/form";
 import { Input } from "@/shared/ui/input";
-import { type SignUpFormData, signUpSchema } from "./schemas";
+import { authFormMessages, type SignUpFormData, signUpSchema } from "./schemas";
 import { useSignUp } from "./use-sign-up";
 
 export function SignUpForm() {
   const { signUp: signUpAction, isLoading, error } = useSignUp();
 
   const form = useForm<SignUpFormData>({
-    resolver: zodResolver(signUpSchema),
+    resolver: zodResolver(signUpSchema, { error: authFormMessages }),
     defaultValues: {
       name: "",
       email: "",
