@@ -1,0 +1,54 @@
+# Production stack: Next.js app + PocketBase.
+#
+#   docker compose -f docker-compose.prod.yml up --build -d
+#
+# - Only the app port is published, on ${PORT:-3000}. PocketBase is NOT
+#   published: the server reaches it at http://pocketbase:8080 over the
+#   internal compose network, browsers go through the /api/pocketbase
+#   rewrite proxy.
+# - pb_hooks/pb_migrations are BIND-MOUNTED from the repo: a hook or
+#   migration change only needs a container restart, not an image rebuild
+#   (docker compose -f docker-compose.prod.yml restart pocketbase).
+
+services:
+  next:
+    build:
+      context: .
+      args:
+        # NEXT_PUBLIC_* vars are inlined at BUILD time (see Dockerfile).
+        # The browser client uses the /api/pocketbase proxy by default, so
+        # this only matters once client code starts reading it.
+        NEXT_PUBLIC_POCKETBASE_URL: ${NEXT_PUBLIC_POCKETBASE_URL:-/api/pocketbase}
+        # The /api/pocketbase rewrite destination is baked into the build
+        # output by next.config.ts — this must be a BUILD arg too.
+        POCKETBASE_URL: ${POCKETBASE_URL:-http://pocketbase:8080}
+    restart: unless-stopped
+    environment:
+      # Server-side only (never NEXT_PUBLIC_): read at request time.
+      # Same variable as the build arg above, so the baked rewrite target and
+      # the runtime URL can never disagree.
+      POCKETBASE_URL: ${POCKETBASE_URL:-http://pocketbase:8080}
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+
+  pocketbase:
+    image: coollabsio/pocketbase:0.40.5
+    restart: unless-stopped
+    volumes:
+      - pb_data:/app/pb_data
+      - ./pocketbase/pb_hooks:/app/pb_hooks
+      - ./pocketbase/pb_migrations:/app/pb_migrations
+    # The `next` image ships its own HEALTHCHECK (see Dockerfile); PocketBase
+    # gets one here so depends_on can wait for it.
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  pb_data:

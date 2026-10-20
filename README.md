@@ -23,6 +23,10 @@ A production-ready Next.js starter with Feature-Sliced Design architecture, desi
 - [Bun](https://bun.sh/) installed
 - [Docker](https://www.docker.com/) and Docker Compose
 
+> **Do not delete `bunfig.toml`.** It pins Bun's linker to `hoisted`, because
+> Turbopack refuses the symlinks Bun's default isolated linker creates in
+> `node_modules/.bun`. Without it, `bun run build` fails.
+
 ### Setup
 
 1. **Install dependencies**
@@ -359,6 +363,114 @@ its routes to `POCKETBASE_PROXY_ROUTES` in `next.config.ts` — auth endpoints
 and records, with the exact route **before** the `/:path*` one — or the client
 will get 404s. Anything you don't add stays correctly unreachable from the
 public domain.
+
+## Deploying with Docker
+
+The repo ships a production `Dockerfile` (multi-stage: Bun build → Node 22
+standalone runtime, non-root uid 1001, ~324 MB) and `docker-compose.prod.yml`
+(Next app + PocketBase). Only the app port is published; PocketBase stays on
+the internal compose network.
+
+### Run the production stack
+
+```bash
+PORT=3000 docker compose -f docker-compose.prod.yml up --build -d
+```
+
+- App: <http://localhost:3000> (`PORT` is the **host** port; the container
+  always listens on 3000).
+- PocketBase: **not published** — the browser reaches it through
+  `/api/pocketbase/*`, proxied by Next.
+
+Stop with `docker compose -f docker-compose.prod.yml down` (add `-v` to also
+delete the `pb_data` volume).
+
+### How the app talks to PocketBase
+
+- **Server side** (server components, server actions, route handlers):
+  `POCKETBASE_URL=http://pocketbase:8080` — the compose service name over the
+  internal network.
+- **Browser**: `/api/pocketbase/*`, rewritten by `next.config.ts` to
+  `POCKETBASE_URL`. PocketBase itself is never exposed to the browser.
+
+> **Build-time, not runtime:** `next.config.ts` reads `POCKETBASE_URL` when the
+> build runs and bakes the rewrite target into the output
+> (`routes-manifest.json`). Changing `POCKETBASE_URL` only at runtime does
+> **not** change the proxy target — rebuild the image with the new value as a
+> build arg. The compose file passes the same variable to both, so the baked
+> target and the runtime URL can never disagree.
+
+> **Cached prerender:** the homepage's PocketBase health widget is a `"use
+> cache"` segment. PocketBase is normally unreachable from inside the build
+> container, so the "Server Error" state gets baked into the static HTML and
+> refreshes after the 15-minute revalidate window. The proxy itself works
+> immediately.
+
+### Coolify
+
+Use either the compose file as a Compose resource, or two resources in the same
+project (they share a Docker network, so the `pocketbase` service name
+resolves).
+
+**Build args vs runtime env — not interchangeable:**
+
+| Variable | Build arg (`ARG` in Dockerfile) | Runtime env |
+| --- | --- | --- |
+| `NEXT_PUBLIC_*` (e.g. `NEXT_PUBLIC_POCKETBASE_URL`) | ✅ required — inlined by `next build` | ❌ no effect |
+| `POCKETBASE_URL` | ✅ required — baked into the `/api/pocketbase` rewrite | ✅ also required — read at request time by server code |
+| `POCKETBASE_ADMIN_TOKEN`, `R2_*`, `PB_TYPEGEN_*` | ❌ | ✅ server-only secrets |
+
+In Coolify, put the build-time values under **Build Args** (Dockerfile build
+pack) and the rest under **Environment Variables**. When you add a
+`NEXT_PUBLIC_*` variable to the app, declare a matching `ARG` + `ENV` pair in
+the Dockerfile's build stage or it will be `undefined` in the browser bundle.
+
+**Runtime env for `next`:** `POCKETBASE_URL=http://pocketbase:8080`; plus
+`POCKETBASE_ADMIN_TOKEN`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` if used.
+
+**Volumes:**
+
+- `pb_data` → `/app/pb_data` — PocketBase database, uploads and backups.
+  **The only stateful volume — back it up.**
+- `./pocketbase/pb_hooks` → `/app/pb_hooks`, `./pocketbase/pb_migrations` →
+  `/app/pb_migrations` — bind-mounted from the repo. Hook/migration changes
+  apply with `restart pocketbase`, no image rebuild.
+
+**Healthchecks:** the app image probes `/` with node's `fetch`; PocketBase
+probes `/api/health`. `next` waits for PocketBase to be healthy
+(`depends_on: service_healthy`).
+
+### PocketBase backups and restore
+
+- **Built-in:** dashboard → **Settings → Backups**. A new backup is a zip
+  stored in `pb_data/backups` (inside the volume) and can be downloaded from
+  the UI. Enable the automatic backup schedule there.
+- **Copy off the volume** (survives losing the volume):
+
+  ```bash
+  docker run --rm -v <project>_pb_data:/data -v "$PWD":/out alpine \
+    tar czf /out/pb_data-$(date +%F).tar.gz -C /data .
+  ```
+
+- **Restore:** put the backup zip in `pb_data/backups` (or upload it from the
+  dashboard), then choose **Restore** on that entry — PocketBase restarts with
+  the restored data. For a full volume restore: stop the stack, replace the
+  contents of the `pb_data` volume, start again.
+- **Superuser MFA:** create the superuser
+  (`./pocketbase superuser create <email> <password>` inside the container) and
+  enable MFA (TOTP) on the account in the dashboard before going live.
+  PocketBase's own port is never published, so the admin UI is only reachable
+  through the private route described in
+  [PocketBase proxy](#pocketbase-proxy-apipocketbase).
+
+### Local dev with the dev override
+
+```bash
+cp docker-compose.override.yml.example docker-compose.override.yml   # gitignored
+docker compose up -d                                                 # PocketBase on 127.0.0.1:8080
+bun dev
+```
 
 ## Extending PocketBase
 

@@ -1,0 +1,14 @@
+# Local dev override — copy me to docker-compose.override.yml (gitignored).
+#
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   docker compose up -d   # base + override: PocketBase on 127.0.0.1:8080
+#   bun dev
+#
+# PocketBase is bound to the loopback interface only, so it stays unreachable
+# from other machines. If 8080 is already taken on your machine, change the
+# host port here and update POCKETBASE_URL / PB_TYPEGEN_URL in .env.local to
+# match.
+services:
+  pocketbase:
+    ports:
+      - "127.0.0.1:8080:8080"
