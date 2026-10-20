@@ -1,19 +1,25 @@
 import "server-only";
 
 import PocketBase from "pocketbase";
+import type { PbClient } from "./generated/client.gen";
 
 /**
  * Admin/Superuser PocketBase client (singleton)
  * ⚠️ SERVER ONLY - Never import this in client components
  *
  * This client is safe to use as a global singleton because it authenticates
- * as a superuser and does NOT track regular user auth state.
+ * as a superuser and does NOT track regular user auth state (see the
+ * per-request client rule in server.ts — pbAdmin is the one allowed
+ * singleton).
  *
  * Use this for server-side operations that need admin privileges:
  * - Server Actions that create/update/delete records
  * - Webhook handlers
  * - Background jobs
  * - Any operation requiring superuser access
+ *
+ * Pass it to the generated SDK functions (sdk.gen.ts) as
+ * `{ client: pbAdmin }` — e.g. `listUsers({ page: 1 }, { client: pbAdmin })`.
  *
  * As recommended by PocketBase maintainer:
  * "You could create one-off node server-side actions that will interact
@@ -24,7 +30,7 @@ import PocketBase from "pocketbase";
  * Get token from: pocketbase superusers create <email> <password>
  * Then: pocketbase superusers list
  */
-export const pbAdmin = new PocketBase(
+export const pbAdmin: PbClient = new PocketBase(
   process.env.POCKETBASE_URL ?? "http://127.0.0.1:8080"
 );
 

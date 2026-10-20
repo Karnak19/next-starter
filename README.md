@@ -6,7 +6,8 @@ A production-ready Next.js starter with Feature-Sliced Design architecture, desi
 
 - **Runtime**: [Bun](https://bun.sh/)
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router, React 19, Turbopack)
-- **Backend**: [PocketBase](https://pocketbase.io/) (Auth, Database, File Storage)
+- **Backend**: [PocketBase](https://pocketbase.io/) 0.40 (Auth, Database, File Storage)
+- **Codegen**: [pbkit](https://github.com/Karnak19/pbkit) (types, typed SDK, Zod schemas, TanStack Query options)
 - **Storage**: [Cloudflare R2](https://developers.cloudflare.com/r2/) (S3-compatible object storage)
 - **State**: [TanStack Query](https://tanstack.com/query)
 - **UI**: [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
@@ -89,6 +90,7 @@ bun build         # Build for production
 bun start         # Start production server
 bun lint          # Run Biome linter
 bun format        # Format code with Biome
+bun run typegen   # Regenerate PocketBase types/SDK/Zod/TanStack options (pbkit)
 ```
 
 ## Environment Variables
@@ -98,6 +100,11 @@ See `.env.local.example` for all variables. Local development defaults:
 ```env
 # PocketBase
 POCKETBASE_URL=http://127.0.0.1:8080
+
+# PocketBase codegen (only needed to run `bun run typegen`)
+PB_TYPEGEN_URL=http://127.0.0.1:8080
+PB_TYPEGEN_EMAIL=admin@example.com
+PB_TYPEGEN_PASSWORD=your-superuser-password
 
 # R2 Storage (optional)
 R2_ACCOUNT_ID=your-account-id
@@ -171,18 +178,118 @@ const user = pb.authStore.isValid ? pb.authStore.record : null;
 
 Three PocketBase clients are available for different contexts:
 
-| Client      | Import                | Use Case                      | Singleton Safe? |
-| ----------- | --------------------- | ----------------------------- | --------------- |
-| `pbBrowser` | `@/shared/db/browser` | Client components (via proxy) | Yes (browser)   |
-| `pbServer`  | `@/shared/db/server`  | Server components (read-only) | No*             |
-| `pbAdmin`   | `@/shared/db/admin`   | Server Actions (superuser)    | Yes             |
+| Client      | Import                | Use Case                      | Singleton Safe?     |
+| ----------- | --------------------- | ----------------------------- | ------------------- |
+| `pbBrowser` | `@/shared/db/browser` | Client components (via proxy) | Yes (browser)       |
+| `pbServer`  | `@/shared/db/server`  | Server components (read-only) | Unauthenticated only |
+| `pbAdmin`   | `@/shared/db/admin`   | Server Actions (superuser)    | Yes                 |
 
 **Important:** `pbAdmin` is the recommended way to interact with PocketBase from server-side code (Server Actions, API routes, webhooks). It authenticates as a superuser and is safe to use as a singleton because it doesn't track regular user auth state.
 
 As [recommended by the PocketBase maintainer](https://github.com/pocketbase/pocketbase/discussions/5313):
 > "You could create one-off node server-side actions that will interact with PocketBase only as admin/superuser and as pure data store"
 
-*`pbServer` creates a new instance per request in server components to safely read user-specific data via cookies.
+**Never save a user token on a shared server client.** `pbServer` is cached for
+the whole server process, so a user token saved on it leaks into every
+concurrent request. For anything acting as the signed-in user, create a
+PocketBase instance **per request** and pass it to the generated SDK with
+`{ client: pb }` — see [Per-request PocketBase client](#per-request-pocketbase-client-server-auth).
+
+`pbBrowser` is the pbkit-generated client singleton (`src/shared/db/generated/client.gen.ts`).
+It is browser-oriented: its base URL is the relative `/api/pocketbase`, so it
+goes through the rewrite proxy on the same origin.
+
+> **Gotcha:** the stock `users` collection ships with `listRule: "id =
+> @request.auth.id"`, so a signed-in user can only list *their own* record.
+> Filtering on the `email` field returns nothing (the rule's `id` reference
+> becomes ambiguous once the filter touches the auth table) — filter on `id` or
+> `name`, or query as a superuser. This is PocketBase's own rule semantics,
+> identical on every server version; it is not a proxy or codegen issue.
+
+## Database codegen (pbkit)
+
+Types, a typed SDK, Zod schemas and TanStack Query options are generated from
+your PocketBase schema into `src/shared/db/generated/`:
+
+```bash
+bun run typegen   # pbkit generate
+```
+
+| Generated file    | Contents                                                                        |
+| ----------------- | ------------------------------------------------------------------------------- |
+| `types.gen.ts`    | `UsersRecord`, `UsersCreate`, `UsersUpdate`, `CollectionName`, …                 |
+| `sdk.gen.ts`      | `getUser`, `listUsers`, `createUser`, … (typed `expand`, `{ client }` option)    |
+| `client.gen.ts`   | the default PocketBase client (relative `/api/pocketbase`)                       |
+| `zod.gen.ts`      | `UsersRecordSchema`, `UsersCreateSchema`, `UsersUpdateSchema` (field constraints) |
+| `tanstack.gen.ts` | `userOptions`, `usersOptions`, `createUserMutationOptions`, `userQueryKey`, …    |
+
+The generated files are **committed**, so `bun run build` works without a
+running PocketBase.
+
+**Rerun after every PocketBase schema change** (new or renamed collection or
+field, changed rule or constraint):
+
+```bash
+# .env.local
+PB_TYPEGEN_URL=http://127.0.0.1:8080      # falls back to POCKETBASE_URL
+PB_TYPEGEN_EMAIL=admin@example.com        # superuser email...
+PB_TYPEGEN_PASSWORD=secret                # ...and password, OR:
+# PB_TYPEGEN_TOKEN=<superuser jwt>        # (falls back to POCKETBASE_ADMIN_TOKEN)
+```
+
+Generation needs superuser access to read the schema. Credentials live in
+`.env.local` (gitignored) and are never written into `pbkit.config.ts`.
+Rerunning on an unchanged schema produces no diff.
+
+### Hand-written Zod: only what PocketBase can't know
+
+Derive form schemas from the generated ones instead of retyping constraints:
+
+```ts
+const signUpSchema = UsersCreateSchema.pick({ email: true, password: true })
+  .extend({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+```
+
+Hand-write only the rules PocketBase does not model: `confirmPassword` and the
+"Passwords don't match" refinement (a form concern, not a schema field), and
+`name` being required with a minimum length (PocketBase's `name` is optional
+and unbounded). User-facing copy ("Please enter a valid email") is attached at
+parse time through `authFormMessages`, passed to
+`zodResolver(schema, { error: authFormMessages })`.
+
+### Per-request PocketBase client (server auth)
+
+The generated `client.gen.ts` is a **singleton**. On the server, a shared
+instance whose `authStore` holds a user token leaks that user across concurrent
+requests.
+
+- `pbAdmin` is the one safe singleton: it authenticates as a superuser, not a user.
+- `pbServer` is safe for unauthenticated reads only — never save a user token on it.
+- For anything acting as the signed-in user, build a client **per request**:
+
+```ts
+import PocketBase from "pocketbase";
+import { getUser } from "@/shared/db/generated/sdk.gen";
+
+const pb = new PocketBase(process.env.POCKETBASE_URL);
+pb.authStore.loadFromCookie(`pb_auth=${(await cookies()).get("pb_auth")?.value ?? ""}`);
+const user = await getUser(pb.authStore.record.id, undefined, { client: pb });
+```
+
+The same `{ client }` argument threads through the generated TanStack options
+(`userOptions(id, undefined, { client: pb })`) and mutations.
+
+**Base URLs:** the generated client is browser-oriented (relative
+`/api/pocketbase`, i.e. through the rewrite proxy); the server uses
+`POCKETBASE_URL` directly. A single `sdk.baseUrl` cannot serve both, so server
+code always passes its own client explicitly.
 
 ## Extending PocketBase
 
@@ -207,7 +314,8 @@ routerAdd("GET", "/api/example", (e) => {
 - **Reactive Auth**: AuthProvider with `useSyncExternalStore` for instant UI updates
 - **Server/Client Auth Sync**: Cookie-based auth sync between client and server
 - **Loading States**: Built-in hydration handling to prevent UI flicker
-- **Type-safe Forms**: Zod schemas with React Hook Form
+- **Type-safe Forms**: Zod schemas with React Hook Form, derived from the generated PocketBase schema
+- **Generated Backend**: types, typed SDK, Zod schemas and TanStack Query options from your PocketBase schema
 - **Streaming**: React Suspense with server components
 - **File Storage**: R2-compatible storage client
 - **Extensible Backend**: Custom routes and hooks via PocketBase JS
