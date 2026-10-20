@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -807,19 +807,19 @@
       background: var(--bg-alt);
     }
 
-    footer p {
+    footer .container p {
       font-size: 0.9rem;
       color: var(--text-muted);
     }
 
-    footer a {
+    footer .container a {
       color: var(--text-main);
       text-decoration: none;
       border-bottom: 1px solid var(--border);
       transition: border-color 0.2s;
     }
 
-    footer a:hover {
+    footer .container a:hover {
       border-color: var(--text-main);
     }
 
@@ -875,7 +875,8 @@
         <div class="container">
           <h1>
             Ship faster with a <br>
-            <em>modern</em> foundation
+            <em>modern</em>
+            foundation
           </h1>
           <p class="fade-in-up delay-1">
             Stop wasting time on boilerplate. Start with authentication,
@@ -907,9 +908,9 @@
               <h3>Authentication that just works</h3>
               <p>
                 Sign up, sign in, password reset — handled. Reactive state with
-                <code>useSyncExternalStore</code> keeps your UI in sync
-                instantly, while secure cookies enable seamless server-side
-                access.
+                <code>useSyncExternalStore</code>
+                keeps your UI in sync instantly, while secure cookies enable
+                seamless server-side access.
               </p>
             </div>
             <div class="card">
@@ -1476,9 +1477,9 @@
                 PocketBase has built-in OAuth2 support. Enable providers in the
                 PocketBase admin UI at <code>/_/</code>, add your client ID and
                 secret, and use the
-                <code>pb.collection('users').authWithOAuth2()</code> method. The
-                auth provider in this starter will pick up the session
-                automatically.
+                <code>pb.collection('users').authWithOAuth2()</code>
+                method. The auth provider in this starter will pick up the
+                session automatically.
               </p>
             </div>
 
