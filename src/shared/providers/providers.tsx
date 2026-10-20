@@ -6,9 +6,9 @@ import { getQueryClient } from "@/shared/lib/query-client";
 import { AuthProvider } from "./auth-provider";
 import { ThemeProvider } from "./theme-provider";
 
-type ProvidersProps = {
+interface ProvidersProps {
   children: ReactNode;
-};
+}
 
 /**
  * App Providers

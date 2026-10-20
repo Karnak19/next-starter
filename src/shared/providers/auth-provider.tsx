@@ -12,11 +12,11 @@ import {
 } from "react";
 import { pbBrowser } from "@/shared/db/browser";
 
-type AuthContextValue = {
+interface AuthContextValue {
   user: RecordModel | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-};
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
