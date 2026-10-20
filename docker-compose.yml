@@ -1,6 +1,6 @@
 services:
   pocketbase:
-    image: coollabsio/pocketbase:0.36.2
+    image: coollabsio/pocketbase:0.40.5
     restart: unless-stopped
     container_name: pocketbase
     volumes:
