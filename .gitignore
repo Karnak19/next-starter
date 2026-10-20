@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# docker compose local override (copy from docker-compose.override.yml.example)
+docker-compose.override.yml
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

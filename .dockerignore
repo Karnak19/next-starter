@@ -1,0 +1,37 @@
+# Build-context hygiene. Keep secrets and machine-specific state out of the
+# image; everything the build needs stays in (bunfig.toml, bun.lock, src/,
+# app/, public/, pocketbase/, config files).
+
+# dependencies & build output (rebuilt inside the image)
+node_modules
+.next
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+
+# git, CI, docs
+.git
+.github
+.gitignore
+docs
+README.md
+
+# environment — never bake secrets into a layer
+.env*
+!.env.local.example
+
+# docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# editors & agents
+.vscode
+.idea
+.opencode
+.claude
+.cursor
+
+# misc
+.DS_Store
