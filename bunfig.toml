@@ -1,0 +1,5 @@
+# Turbopack refuses symlinks that point outside the project root, which Bun's
+# default isolated linker produces in node_modules/.bun. Use a hoisted install
+# so `bun run build` (and `next dev`) work.
+[install]
+linker = "hoisted"
